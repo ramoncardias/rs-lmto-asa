@@ -1,0 +1,10 @@
+&element
+    symbol='Pa',
+    atomic_number=91,
+    core=86,
+    valence=3,
+    f_core=16,
+    num_quant_s=7,
+    num_quant_p=-1
+    num_quant_d=6,
+/

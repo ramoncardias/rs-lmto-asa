@@ -1,0 +1,40 @@
+&control
+  llsp       = 456
+  lld        = 789
+  idos       = 123
+  lrot       = .true.
+  incorb     = .true.
+  mext       = 456
+  svac       = .true.
+  txc        = 123
+  blockrec   = .true. 
+  partype    = 123
+  do_asd     = .true.
+  do_cochg   = .true. 
+  asd_jij    = .true.
+  terminator = 1      
+  conca      = 1.0d0
+  concb      = 2.0d0
+  ruban      = 3.0d0
+  njij       = 1   
+  do_comom   = .true.
+  calctype   = "S"
+  alat       = 12.3
+  r2         = 45.6
+  wav        = 78.9
+  ntype      = 2
+  ntot       = 3
+  nbulk      = 1
+  nsp        = 111
+  nlim       = 222
+
+  ! allocatable vars should come last
+  ct        = 1,2
+  iu        = 10,20,30
+  ib        = 101
+  ifc       = 321
+  irec      = 987
+  mom(:,1)  = 1,2
+  mom(:,2)  = 3,4
+  mom(:,3)  = 5,6
+/

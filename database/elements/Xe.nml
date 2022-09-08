@@ -1,0 +1,10 @@
+&element
+    symbol='Xe',
+    atomic_number=54,
+    core=36,
+    valence=18,
+    f_core=0,
+    num_quant_s=5,
+    num_quant_p=5,
+    num_quant_d=4
+/

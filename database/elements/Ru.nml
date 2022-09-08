@@ -1,0 +1,10 @@
+&element
+    symbol='Ru',
+    atomic_number=44,
+    core=36,
+    valence=8,
+    f_core=0,
+    num_quant_s=5,
+    num_quant_p=5,
+    num_quant_d=4
+/

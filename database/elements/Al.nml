@@ -1,0 +1,10 @@
+&element
+    symbol='Al',
+    atomic_number=13,
+    core=10,
+    valence=3,
+    f_core=0,
+    num_quant_s=3,
+    num_quant_p=3,
+    num_quant_d=3
+/

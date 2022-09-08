@@ -1,0 +1,24 @@
+&element
+    symbol='Pt',
+    atomic_number=78,
+    core=54,
+    valence=10,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/
+&par
+    center_band_s_up = -0.535020119
+    center_band_p_up =  0.184435883
+    center_band_d_up = -0.324964080
+    center_band_s_dw = -0.535020119
+    center_band_p_dw =  0.184435883
+    center_band_d_dw =  -0.324964080
+    width_band_s_up = 0.371265780
+    width_band_p_up = 0.233506141
+    width_band_d_up = 0.150775218
+    width_band_s_dw = 0.371265780
+    width_band_p_dw = 0.233506141
+    width_band_d_dw = 0.150775218
+/

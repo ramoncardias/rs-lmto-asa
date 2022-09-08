@@ -1,0 +1,44 @@
+&control
+  nrec=2,
+  calctype = 'B'
+  ntot = 10
+/
+
+&self
+  ! [Control Variables]
+  all_inequivalent = F
+
+  ! [Control Variables]
+  channels_ldos = 1234
+  energy_min = -3
+  energy_max = 3
+  fermi = -0.123
+  fix_fermi = .true.
+  nbas = 1
+
+  ! [Wigner Seitz Radius]
+  ws_all = F
+  ws = 1.23, 4.56
+
+  ! [Mixing Parameters]
+  mix_all = F
+  mix = 4.560, 7.89
+
+  ! [Magnetic Mixing Parameters]
+  magnetic_mixing = T
+  mixmag_all      = F
+  mixmag          = 2.34, 5.67
+
+  ! [Convergence Parameters]
+  nstep = 1000
+  conv_thr = 0.5d-10
+
+  ! [Constrain Variables]
+  freeze      = T
+  rigid_band  = T
+  rb          =  123, 456
+
+  ! [Other Variables]
+  init = 123
+  valence = 8.123
+/

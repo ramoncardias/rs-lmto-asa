@@ -1,0 +1,8 @@
+List of currently unstable features in the RS-LMTO-ASA codes:
+(Note: Some of these problems are compiler/system dependent)
+
+Reported by anders.i.bergman@gmail.com 17/03/2008:
+* Fully relativistic calculations are not exactly rotationally invariant for zero L.S coupling
+  (this is a problem with the recursion method as such and is thus not a real 'bug')
+
+* The acceleration of moment directions is very experimental and untested.

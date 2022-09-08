@@ -1,0 +1,10 @@
+&element
+    symbol='Sc',
+    atomic_number=21,
+    core=18,
+    valence=3,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/

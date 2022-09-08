@@ -1,0 +1,24 @@
+&element
+    symbol='Fe50Co50',
+    atomic_number=26.5,
+    core=18,
+    valence=8.5,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/
+&par
+    center_band_s_up = -0.336294198
+    center_band_p_up =  0.316359398
+    center_band_d_up = -0.258224991
+    center_band_s_dw = -0.311832689
+    center_band_p_dw =  0.366471838
+    center_band_d_dw =  -0.088512769
+    width_band_s_up = 0.398599981
+    width_band_p_up = 0.260720457
+    width_band_d_up = 0.110658490
+    width_band_s_dw = 0.400558581
+    width_band_p_dw = 0.267807170
+    width_band_d_dw = 0.131801482
+/

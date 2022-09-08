@@ -1,0 +1,10 @@
+&element
+    symbol='Bk',
+    atomic_number=97,
+    core=86,
+    valence=4,
+    f_core=21,
+    num_quant_s=7,
+    num_quant_p=-1
+    num_quant_d=6,
+/

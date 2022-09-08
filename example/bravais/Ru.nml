@@ -1,0 +1,24 @@
+&element
+    symbol='Ru',
+    atomic_number=44,
+    core=36,
+    valence=8,
+    f_core=0,
+    num_quant_s=5,
+    num_quant_p=5,
+    num_quant_d=4
+/
+&par
+    center_band_s_up = -0.227213604
+    center_band_p_up =  0.409046653
+    center_band_d_up = -0.142983254
+    center_band_s_dw = -0.227213604
+    center_band_p_dw =  0.409046653
+    center_band_d_dw =  -0.142983254
+    width_band_s_up = 0.391754309
+    width_band_p_up = 0.241816472
+    width_band_d_up = 0.163782707
+    width_band_s_dw = 0.391754309
+    width_band_p_dw = 0.241816472
+    width_band_d_dw = 0.163782707
+/

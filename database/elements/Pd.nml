@@ -1,0 +1,10 @@
+&element
+    symbol='Pd',
+    atomic_number=46,
+    core=36,
+    valence=10,
+    f_core=0,
+    num_quant_s=5,
+    num_quant_p=5,
+    num_quant_d=4
+/

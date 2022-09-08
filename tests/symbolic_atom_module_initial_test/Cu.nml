@@ -1,0 +1,24 @@
+&element
+    symbol='Cu',
+    atomic_number=29,
+    core=18,
+    valence=11,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/
+&par
+center_band_s_up = -0.430414987
+center_band_p_up =  0.249868163
+center_band_d_up = -0.299825466
+center_band_s_dw = -0.430414983
+center_band_p_dw =  0.249868170
+center_band_d_dw =  -0.299825467
+width_band_s_up = 0.391394572
+width_band_p_up = 0.260459319
+width_band_d_up = 0.095901360
+width_band_s_dw = 0.391394573
+width_band_p_dw = 0.260459319
+width_band_d_dw = 0.095901360
+/

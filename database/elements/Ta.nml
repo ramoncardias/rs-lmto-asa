@@ -1,0 +1,10 @@
+&element
+    symbol='Ta',
+    atomic_number=73,
+    core=54,
+    valence=5,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

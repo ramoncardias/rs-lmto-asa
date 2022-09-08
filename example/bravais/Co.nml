@@ -1,0 +1,24 @@
+&element
+    symbol='Co',
+    atomic_number=27,
+    core=18,
+    valence=9,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/
+&par
+    center_band_s_up = -0.266523012
+    center_band_p_up =  0.448747850
+    center_band_d_up = -0.169678507
+    center_band_s_dw = -0.253518500
+    center_band_p_dw =  0.492954098
+    center_band_d_dw =  -0.056204107
+    width_band_s_up = 0.421162577
+    width_band_p_up = 0.275865043
+    width_band_d_up = 0.122886151
+    width_band_s_dw = 0.425030588
+    width_band_p_dw = 0.283340379
+    width_band_d_dw = 0.137919686
+/

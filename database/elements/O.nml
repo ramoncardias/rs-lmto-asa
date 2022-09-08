@@ -1,0 +1,10 @@
+&element
+    symbol='O',
+    atomic_number=8,
+    core=2,
+    valence=6,
+    f_core=0,
+    num_quant_s=2,
+    num_quant_p=2,
+    num_quant_d=3
+/

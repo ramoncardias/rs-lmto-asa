@@ -1,0 +1,5 @@
+&calculation
+  pre_processing = "bravais"
+  processing = "none"
+  post_processing = "none"
+/

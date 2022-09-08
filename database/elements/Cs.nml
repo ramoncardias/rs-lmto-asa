@@ -1,0 +1,10 @@
+&element
+    symbol='Cs',
+    atomic_number=55,
+    core=54,
+    valence=1,
+    f_core=0,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

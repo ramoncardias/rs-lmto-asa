@@ -1,0 +1,197 @@
+#
+#                                  Maintain rsnew.x
+#                          RS-LMTO-ASA program for impurities.
+#                Currently embedded and supported clusters can be treated 
+#               with spin-orbit interactions and/or non-collinear magnetism.
+#                S. Frota-Pessoa   Phys. Rev. B 46, 14570 (1992) (general)
+#       S. Frota-Pessoa   Phys. Rev. B 69, 104401 (2004) (s-o in embedded clusters)
+#  A. Burlamaqui-Klautau et.al. Phys. Rev. B 70, 193407 (2004) (s-o in supported clusters)
+#       A. Bergman et. al Phys. Rev. B 73, 174434 (2006) (non-collinear magnetism)
+#version=0.96
+SHELL = /bin/sh
+# 
+# Add file types to the known list of suffixes (file extensions)
+.SUFFIXES: .f .f90 .F90
+
+
+
+################################################################################
+# Check for the git version of the code
+################################################################################
+#GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+#ver_length := $(words GIT_VERSION)
+#ifneq (ver_length,0)
+#VERFLAGS :=-DVERSION=\"$(GIT_VERSION)\"
+#else
+#VERFLAGS :=
+#endif
+
+
+PARALLEL=
+DEBUG=
+
+################################################################################
+# Program name
+################################################################################
+PROG = rsnew.x
+
+
+################################################################################
+# Flags for ifort (newer versions) 
+################################################################################
+# Debug options
+DEBUG= -g -traceback
+# Flags for parallel runs (MPI+OMP)
+PARALLEL= -DMPI -DOMP
+# Fortran compiler for the code
+FC = mpiifort 
+# Fortran compiler for utility compiler
+FCU = ifort
+# MPI related flags (usually -lfmpich -lmpich -lpthread if needed)
+MPIFLAGS = 
+# OpenMp related flags
+OMPFLAGS = -qopenmp -qno-openmp-simd
+# Optimization flags
+OPTFLAGS = -g -cpp -O2 -xCORE-AVX512 -fpp -fpic -align array64byte -xHost -ip -fp-speculation=safe  
+#-align array64byte -xHost -ip -fp-speculation=safe 
+#OPTFLAGS = -O2 -align array64byte -xHost -ip -fp-speculation=safe 
+# Flags for utility programs
+#UFFLAGS = -O2 -align array64byte -ip
+# Link flags
+LIBFLAGS = -Nmkl -mkl=sequential $(FFLAGS)
+
+
+
+###################################################################################
+#### Flags for gfortran w. openmpi and BLAS/LAPACK
+###################################################################################
+#### Debug options
+#DEBUG= -g -fbacktrace
+#### Flags for parallel runs (MPI+OMP)
+#PARALLEL= -DMPI -DOMP
+#### Fortran compiler for the code
+#FC = mpif90
+#### Fortran compiler for utility compiler
+#FCU = gfortran
+#### MPI related flags (usually -lfmpich -lmpich -lpthread if needed)
+#MPIFLAGS = 
+#### OpenMp related flags
+#OMPFLAGS = -fopenmp 
+#### Optimization flags
+#OPTFLAGS = -g -fbacktrace -fcheck=all -cpp -Ofast -ffree-line-length-0 -fpic
+#### Flags for utility programs
+#UFFLAGS = -O2 
+#### Link flags
+#LIBFLAGS = -Nmkl -lmkl_gf_lp64 -lmkl_core -lmkl_sequential -lpthread -lm $(FFLAGS)
+
+
+
+
+
+# Utils directory
+UTDIR = ./util
+
+################################################################################
+# Combining flags
+################################################################################
+FCFLAGS =   $(DEBUG) $(OPTFLAGS)
+ifeq ($(PARALLEL),-DMPI)
+	LFLAGS =  $(MPIFLAGS) $(LIBFLAGS) 
+	FFLAGS =  $(FCFLAGS)
+else
+ifeq ($(PARALLEL),-DOMP)
+	#FFLAGS =  $(OMPFLAGS) $(FCFLAGS) -DMKL_DIRECT_CALL_SEQ
+	FFLAGS =  $(OMPFLAGS) $(FCFLAGS) 
+	LFLAGS =  $(LIBFLAGS)
+else
+ifeq ($(PARALLEL),-DMPI -DOMP)
+	#FFLAGS =   $(OMPFLAGS) $(FCFLAGS) -DMKL_DIRECT_CALL_SEQ
+	FFLAGS =   $(OMPFLAGS) $(FCFLAGS) 
+	LFLAGS =   $(LIBFLAGS) $(MPIFLAGS)
+else
+        LFLAGS =   $(OMPFLAGS) $(LIBFLAGS)
+        FFLAGS =  $(FCFLAGS)
+endif
+endif
+endif
+
+################################################################################
+# Define object file names
+################################################################################
+OBJS=   face.o logger.o precision.o globals.o math.o string.o os.o control.o lattice.o self.o       \
+        charge.o element.o potential.o symbolic_atom.o hamiltonian.o recursion.o density_of_states.o green.o \
+        bands.o calculation.o main.o
+#       BLAS library is needed. If no BLAS library is accessible, use zgemv.f and zgemm.f from $(UTDIR) directory
+ 
+ 
+################################################################################
+# Setting particular optimization flags for sensitive subroutines
+################################################################################
+atorb.o: OPTFLAGS+=-O2
+lmtst.o: OPTFLAGS+=-O2
+
+$(PROG): $(OBJS) 
+	-$(FC) $(OBJS) $(OPTFLAGS) $(LFLAGS) -o $(PROG)
+
+################################################################################
+# Define utility programs for compilation
+################################################################################
+utils: 
+#       Structure matrix and neighbour list 
+	$(FCU) $(UFFLAGS) $(UTDIR)/structb.f90 -o $(UTDIR)/structb.x
+##       Structure matrix and neighbour list  (accelerated with MKL)
+#	$(FCU) $(UFFLAGS) $(UTDIR)/structb_mkl.f90 -o $(UTDIR)/structb_mkl.x
+#       Structure matrix and neighbour list (v2)
+	$(FCU) $(UFFLAGS) $(UTDIR)/structb_dev.f90 $(UTDIR)/get_alph.f90 $(LFLAGS) -o $(UTDIR)/structb_dev.x
+#       Madelung matrix for impurity geometries
+	$(FCU) $(UFFLAGS) $(UTDIR)/impmad.f -o $(UTDIR)/impmad.x
+#       Madelung matrix for bulk (periodic) systems
+	$(FCU) $(UFFLAGS) $(UTDIR)/bulkmat.f  -o $(UTDIR)/bulkmat.x 
+#       Madelung matrix for surface (semi-periodic) systems
+	$(FCU) $(UFFLAGS) $(UTDIR)/surfmat.f90  -o $(UTDIR)/surfmat.x 
+#       Tool for sorting clusters around impurities
+	$(FCU) $(UFFLAGS) $(UTDIR)/newclu.f90 -o $(UTDIR)/newclu.x
+#       Post-processing for obtaining DOS and magnetic moments
+	$(FCU) $(UFFLAGS) $(UTDIR)/ldos.f90 -o $(UTDIR)/ldos.x
+#       Post-processing for obtaining magnetic configurations
+	$(FCU) $(UFFLAGS) $(UTDIR)/report.f90 -o $(UTDIR)/report.x
+#       Post-processing for obtaining total energy
+	$(FCU) $(UFFLAGS) $(UTDIR)/energy.f90 -o $(UTDIR)/energy.x
+#       Build supercell cluster
+	$(FCU) $(UFFLAGS) $(UTDIR)/bravais.f  -o $(UTDIR)/bravais.x 
+#       Build supercell cluster
+	$(FCU) $(UFFLAGS) $(UTDIR)/bravais_direct.f  -o $(UTDIR)/bravais_direct.x 
+#       Cut bulk cluster for creating surface cluster
+	$(FCU) $(UFFLAGS) $(UTDIR)/buildsurf.f90 -o $(UTDIR)/buildsurf.x
+#       Calculate Jij exchange parameters using Lichthensteins formula
+	$(FCU) $(UFFLAGS) $(UTDIR)/coupli.f90 -o $(UTDIR)/coupli.x
+#       Translate output from LMTO47 CTRL file to set of at* files
+	$(FCU) $(UFFLAGS) $(UTDIR)/ger2bra.f90 -o $(UTDIR)/ger2bra.x
+#       Structure matrix and neighbour list 
+	$(FCU) $(UFFLAGS) $(UTDIR)/structb_asr.f90 $(UTDIR)/augmap.f90 -o $(UTDIR)/structb_asr.x
+#       Neighbour map finder
+	$(FCU) $(UFFLAGS) $(UTDIR)/neighbourmap.f90 -o $(UTDIR)/neighbourmap.x
+
+
+################################################################################
+# Standard compilation rules 
+################################################################################
+%.o : %.f
+	$(FC) $(FFLAGS) -c $^
+
+%.o : %.f90
+	$(FC) $(FFLAGS) $(PARALLEL) -c $^
+
+%.o : %.F90
+	$(FC) $(FFLAGS) $(PARALLEL) $(VERFLAGS) -c $^
+#       Use line below for gfortran/cpp
+#	$(FC) $(FFLAGS) -cpp $(PARALLEL) $(VERFLAGS) -c $^
+
+
+dist:
+	tar cf rsnew.tar Makefile *.f90 *.F90 $(UTDIR)/*.f $(UTDIR)/*.f90 docs/ $(UTDIR)/*.sh
+	gzip rsnew.tar
+
+clean:
+	rm *.o *.mod
+

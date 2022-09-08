@@ -1,0 +1,24 @@
+&element
+    symbol='Pb',
+    atomic_number=82,
+    core=64,
+    valence=4,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=6
+/
+&par
+    center_band_s_up = -0.958783641
+    center_band_p_up = -0.225424039
+    center_band_d_up =  0.000619183
+    center_band_s_dw = -0.958783640
+    center_band_p_dw = -0.225424038
+    center_band_d_dw =  0.000619184
+    width_band_s_up = 0.232949805
+    width_band_p_up = 0.208168599
+    width_band_d_up = 0.083194653
+    width_band_s_dw = 0.232949805
+    width_band_p_dw = 0.208168599
+    width_band_d_dw = 0.083194653
+/

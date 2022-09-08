@@ -1,0 +1,10 @@
+&element
+    symbol='Am',
+    atomic_number=95,
+    core=86,
+    valence=2,
+    f_core=21,
+    num_quant_s=7,
+    num_quant_p=-1
+    num_quant_d=6,
+/

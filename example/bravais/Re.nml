@@ -1,0 +1,24 @@
+&element
+    symbol='Re',
+    atomic_number=75,
+    core=54,
+    valence=7,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/
+&par
+    center_band_s_up = -0.366053744
+    center_band_p_up =  0.389824148
+    center_band_d_up = -0.047249627
+    center_band_s_dw = -0.366053744
+    center_band_p_dw =  0.389824148
+    center_band_d_dw =  -0.047249627
+    width_band_s_up = 0.392000111
+    width_band_p_up = 0.238194407
+    width_band_d_up = 0.180842858
+    width_band_s_dw = 0.392000111
+    width_band_p_dw = 0.238194407
+    width_band_d_dw = 0.180842858
+/

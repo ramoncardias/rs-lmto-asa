@@ -1,0 +1,10 @@
+&element
+    symbol='Kr',
+    atomic_number=36,
+    core=18,
+    valence=18,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/

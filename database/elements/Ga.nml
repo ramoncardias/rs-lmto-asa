@@ -1,0 +1,10 @@
+&element
+    symbol='Ga',
+    atomic_number=31,
+    core=18,
+    valence=13,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/

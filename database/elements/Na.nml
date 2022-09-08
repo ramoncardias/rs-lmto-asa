@@ -1,0 +1,10 @@
+&element
+    symbol='Na',
+    atomic_number=11,
+    core=10,
+    valence=1,
+    f_core=0,
+    num_quant_s=3,
+    num_quant_p=3,
+    num_quant_d=3
+/

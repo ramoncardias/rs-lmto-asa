@@ -1,0 +1,10 @@
+&element
+    symbol='Cr',
+    atomic_number=24,
+    core=18,
+    valence=6,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/

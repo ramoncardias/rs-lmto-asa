@@ -1,0 +1,10 @@
+&element
+    symbol='Ac',
+    atomic_number=89,
+    core=86,
+    valence=3,
+    f_core=14,
+    num_quant_s=7,
+    num_quant_p=-1
+    num_quant_d=6,
+/

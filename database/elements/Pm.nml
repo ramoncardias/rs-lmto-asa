@@ -1,0 +1,10 @@
+&element
+    symbol='Pm',
+    atomic_number=61,
+    core=54,
+    valence=2,
+    f_core=5,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

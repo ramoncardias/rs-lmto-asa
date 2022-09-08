@@ -1,0 +1,10 @@
+&element
+    symbol='NewElem',
+    atomic_number=1,
+    core=2,
+    valence=3,
+    f_core=4,
+    num_quant_s=5,
+    num_quant_p=6,
+    num_quant_d=7
+/

@@ -1,0 +1,10 @@
+&element
+    symbol='Ce',
+    atomic_number=58,
+    core=54,
+    valence=2,
+    f_core=2,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

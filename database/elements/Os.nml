@@ -1,0 +1,10 @@
+&element
+    symbol='Os',
+    atomic_number=76,
+    core=54,
+    valence=8,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

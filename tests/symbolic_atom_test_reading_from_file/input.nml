@@ -1,0 +1,6 @@
+&atoms
+label(1) = 'Fe-bulk'
+label(2) = 'Fe-S'
+label(3) = 'Fe'
+label(4) = 'surface/Fe'
+/

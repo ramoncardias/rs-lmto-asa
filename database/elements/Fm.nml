@@ -1,0 +1,10 @@
+&element
+    symbol='Fm',
+    atomic_number=100,
+    core=-1,
+    valence=-1,
+    f_core=-1,
+    num_quant_s=-1,
+    num_quant_p=-1,
+    num_quant_d=-1
+/

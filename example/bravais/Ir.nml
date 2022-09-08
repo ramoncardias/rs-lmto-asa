@@ -1,0 +1,24 @@
+&element
+    symbol='Ir',
+    atomic_number=77,
+    core=54,
+    valence=9,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/
+&par
+    center_band_s_up = -0.463475546
+    center_band_p_up =  0.300925645
+    center_band_d_up = -0.209816425
+    center_band_s_dw = -0.463475546
+    center_band_p_dw =  0.300925645
+    center_band_d_dw =  -0.209816425
+    width_band_s_up = 0.387432631
+    width_band_p_up = 0.241564895
+    width_band_d_up = 0.168137666
+    width_band_s_dw = 0.387432631
+    width_band_p_dw = 0.241564895
+    width_band_d_dw = 0.168137666
+/

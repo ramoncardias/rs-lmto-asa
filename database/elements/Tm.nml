@@ -1,0 +1,10 @@
+&element
+    symbol='Tm',
+    atomic_number=69,
+    core=54,
+    valence=2,
+    f_core=13,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

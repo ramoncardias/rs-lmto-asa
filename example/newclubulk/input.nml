@@ -1,0 +1,26 @@
+&calculation
+pre_processing = 'newclubulk' ! builds a bulk clust from bulk using rc, crystal_sym and ndim; then builds the impurity clust using inclu(nclu,3)
+verbose = F
+/
+&lattice
+ndim = 50000 ! cluster dimension to begin with. We could think about guess it from the atom density in the primitive cell and the radius cut. Has a big number as default
+rc = 100 ! radius cut. We could think about setting a default
+alat = 2.86120
+crystal_sym = 'bcc' ! options are bcc, fcc and hcp so far.
+nclu = 1
+inclu(1,:) = 0.0, 0.0, 0.0
+/
+&atoms
+database = './'
+label(1) = 'Fe-bulk'
+label(2) = 'Fe-imp'
+/
+&self
+valence = 8.0 ! not really using in this first moment
+ws_all = .true. ! ''
+fermi = 0.08 ! It is a mandatory input in case of surface or impurity calculation
+/
+&control
+calctype = 'I' ! If 'I', builds correctly the irec(:), iu(:) and ib(:). If not, there might be errors. Need to improve here maybe.
+nsp = 2 ! Not really using in this first moment
+/

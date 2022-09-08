@@ -1,0 +1,26 @@
+&element
+    symbol='Gd',
+    atomic_number=64,
+    core=54,
+    valence=3,
+    f_core=7,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+    ql(:,1) = 0.5, 0.5, 1.0
+    ql(:,2) = 0.25, 0.25, 0.5 
+/
+&par
+    center_band_s_up = -0.306393149
+    center_band_p_up = 0.117207170
+    center_band_d_up = -0.024780377
+    center_band_s_dw = -0.247214639
+    center_band_p_dw = 0.124107776
+    center_band_d_dw = 0.033757565
+    width_band_s_up = 0.303909493
+    width_band_p_up = 0.180077086
+    width_band_d_up = 0.140642368
+    width_band_s_dw = 0.305991336
+    width_band_p_dw = 0.164807859
+    width_band_d_dw = 0.139505086
+/

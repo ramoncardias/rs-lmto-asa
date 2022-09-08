@@ -1,0 +1,154 @@
+/**
+@mainpage RS-LMTO-ASA 
+
+@section Introduction
+
+ This is a user's manual for the programs used to calculate electronic structure by
+means of the real space - linear muffin-tin orbital - atomic sphere approximation method
+(RS-LMTO-ASA).
+
+The RS-LMTO-ASA approach, a first-principles method which allows us to obtain
+the electronic structure of metallic systems directly in real space, was developed by the
+group of Prof. Dr. Sonia Frota-Pessôa at the Physics Department of the University of S.
+Paulo, Brazil. It is based on the LMTO-ASA theory but uses the recursion method to solve
+the eigenvalue problem directly in real space.
+
+Concerning structures the method can be applied to treat bulk, surfaces, multilayers,
+sandwiches and free clusters as well as nanostructures embedded in these systems. In terms
+of properties, the RS-LMTO-ASA has been applied to obtain local spin and orbital
+moments, the exchange coupling J between different sites, defect formation energies,
+hyperfine interactions such as electric field gradients, isomer shifts and hyperfine fields. In
+collaboration with Prof. O. Eriksson ́s group in Uppsala, Sweden, the RS-LMTO-ASA
+approach was extended to allow the calculation of the magnetic properties of non-collinear
+systems.
+
+Over the years the following people have written, corrected or made additions to
+the program: S. Ferreira, J. Duarte Jr., M. S. Methfessel, P. R. Peduto, H. M. Petrilli, S. B.
+Legoas, A. B. Klautau, A. Bergman.
+
+@image html exampleImage.png
+
+*/
+
+/**
+@page Development
+
+## Real Space - Linear Muffin-tin Orbital - Atomic Sphere Approximation
+
+The RS-LMTO-ASA approach, a first-principles method which allows us to obtain the electronic structure of metallic systems directly in real space, was developed by the group of  Prof. Dr. Sonia Frota-Pessôa at the Physics Department of the University of S. Paulo, Brazil. It is based on the LMTO-ASA theory but uses the recursion method to solve the eigenvalue problem directly in real space. It started to be developed, in its simplest form, to study the density of states and magnetic properties of  bulk systems in 1987, yielding its first publication in 1991. After that the method has been extended to treat surfaces, multilayers, sandwiches and free clusters as well as nanostructures embedded in these systems. In terms of properties, the RS-LMTO-ASA has been applied to obtain local spin and orbital moments, the exchange coupling J between different sites, defect formation energies, hyperfine interactions such as electric field gradients, isomer shifts and hyperfine fields. In the last few years and to investigate, in collaboration with Prof. O. Eriksson´s group in Uppsala, Sweden, the RS-LMTO-ASA approach was extended to allow the calculation of the magnetic properties of non-collinear systems.
+
+Over the years the following people have written, corrected or made additions to the program: S. Ferreira, J. Duarte Jr., M. S. Methfessel, P. R. Peduto, H. M. Petrilli, S. B. Legoas, A. B. Klautau, A. Bergman, A. Szilva, R. Cardias.
+
+---
+
+## Features and References
+
+Description
+
+- RS-LMTO-ASA is based on density functional theory (DFT) and is an implementation of the linear muffin-tin orbital - atomic sphere approximation method, directly in real space, using the Recursion method.
+
+✓ The method is decribed in:
+
+> ® First-Principles Linear Muffin Tin Orbital Atomic Sphere Approximation Calculation in Real Space, P. R. Peduto, S. Frota-Pessôa and M. Methfessel, Phys. Rev. B44, p.13283, 1991.
+
+✓ The spin-orbit coupling implementaion is decribed in:
+
+> ® S. Frota-Pessôa. Magnetic Behavior of 3d impurities in Cu, Ag and Au: First-principles calculations of orbital moments. Physical Review B - Condensed Matter and Materials Physics, v. 69, p. 104401-1-104401-7, 2004.
+ 
+✓ The non-collinear magnetism implementaion is decribed in:
+ 
+> ® A. Bergman; L. Nordstrom ; A. B. Klautau; S. Frota-Pessôa; O. Eriksson. Magnetic interactions of supported magnetic clusters. Physical Review. B 73, 174434 (2006).
+
+---
+
+## Materials
+
+RS-LMTO-ASA is especially suited for:
+
+- nano-magnetic systems (collinear or non-collinear)
+- open systems (surfaces, wires, nanostructures, impurities (substitutional and interstitial))
+- transition metals
+
+## Calculated Properties
+
+Among other properties, RS-LMTO-ASA allows to calculate:
+
+- Electronic properties like density of states
+- Local Spin and orbital moments
+- Defect formation energies
+- Hyperfine interactions: Electric field gradients, isomer shifts, hyperfine fields
+- Exchange coupling Jij, Dzyaloshinskii-Moriya interaction (DM)
+- Magnetic properties of non-collinear systems
+ 
+---
+
+## Materials
+
+### RS-LMTO-ASA is especially suited for:
+
+magnetic systems (collinear or non-collinear)
+open systems (surfaces, wires, nanostructures, impurities (substitutional and interstitial))
+transition metals
+Computer requirements
+
+- The program is written in FORTRAN and runs under Unix on practically all platforms ( HP, Linux-PCs, SGI, SUNs, IBM).
+- Parallelization is possible and highly efficientOrder Information
+
+RS-LMTO-ASA has been used by research groups which collaborate with Prof. S. Frota-Pessôa and Helena Petrilli (São Paulo University, Brazil), Prof. Olle Eriksson and Dr. Anders Bergman (Uppsala University, Sweden) or Dr. A. B. Klautau (Federal Univerty of Pará, Brazil).
+
+*/
+
+
+/**
+
+@page History
+
+## Historical Development
+
+It is clear that several people have been evolved in this effort. Several students got their degrees at Prof. S. Frota-Pessôa´s group in S. Paulo and moved on, while new students took their places. Every time a new property was implemented in the code results were checked using other methods (often the LMTO-ASA for crystalline systems and the KKR approach in the case of embedded clusters) and experiment results. This often led to interactions with other groups, among them Prof. Andersen´s group in Sttutgart, Dr. Josef Kudrnovsky in Prague, Prof. Eriksson´s group in Uppsala and the experimental groups of Prof. D. Riegel at the Hahn Meitner Institut and Prof. W. D. Brewer in Berlin.
+
+Our intention is to give a little history of the development of the RS-LMTO-ASA approach, referring the readers to the relevant references at each step. But not everybody would be interested in all steps: people are busy and prefer to go directly to their point of interest. With this in mind we will just mention the initial steps of the development and direct the reader to specific topics. There a brief account of the motivations, people involved and main references regarding the specific topic will be found.
+
+ 
+
+### Initial Steps
+
+The group in S. Paulo has been using the recursion method since 1982, when Haydock sent us Nex´s codes, which were very well documented and could therefore be easily adapted to our purposes. The motivation was to understand, using parameterized tight binding Hamiltonians, the behavior of amorphous metals. The initial calculations only involved d-orbitals, which could be considered tightly bound. The s and p orbitals were included in a free electron approach, which was not really satisfactory.
+
+In 1986 a paper by Prof O. K. Andersen in Phys. Rev. Letters called our attention to the tight-binding version of the LMTO-ASA theory, where the Hamiltonian for all electrons (including s and p) was given as tightly bound. Prof. Frota-Pessôa got in touch with Prof. Andersen and spent four months in his group in Stuttgart to understand this new formalism. There we made contact with Dr. M. S. Methfessel, a post-doc with the group, who was implementing the tight binding LMTO-ASA codes in k-space.
+
+Returning to Brazil we started to use a better parameterization, based on the tight-binding version of the LMTO-ASA, in conjunction with the recursion method, to treat metallic systems including s-p and d electrons in our tight-binding calculations. The main reference for the parameterization is “Parametrized LMTO-ASA tight-binding Scheme: the electronic structure of MoRu Alloys”, S. Ferreira, J. Duarte Jr and S. Frota-Pessôa, Phys. Rev. B41, p.5627, 1990.  The results, obtained with the help of approximate charge neutrality, were surprisingly good but still used parameters.
+
+In 1989 we invited Dr. Methfessel to spend a month in S. Paulo. At the time he explained to us in detail all the steps used in his k-space codes and gave us a written documentation of all subroutines. With our knowledge of the recursion codes and his knowledge of the LMTO-ASA codes, we structured the RS-LMTO-ASA approach. The student Pascoal R. Peduto participated actively of the development and the basic RS-LMTO-ASA reference (First-Principles Linear Muffin Tin Orbital Atomic Sphere Approximation Calculation in Real Space, P. R. Peduto, S. Frota-Pessôa and M. Methfessel, Phys. Rev. B44, p.13283, 1991) was based on his theses. Just as a curiosity: in these article we explain why the parameterized results based on the tight binding LMTO-ASA calculations works so well. This is interesting since RS-LMTO-ASA calculations can be used to generate reasonably good tight binding Hamiltonians, in complex situations where the parameterized approach is more efficient.
+
+ 
+
+## Properties
+
+### Exchange Coupling
+
+Since 1992 we have collaborated closely with the experimental groups of Prof. D. Riegel (Hahn Meitner Institute, Berlin) and Prof. W. D. Brewer (Freie Universität Berlin, Berlin), which used time-differential perturbed angular distribution (TDPAD) experiments to investigate local magnetic properties of impurities in metallic hosts.
+
+Our effort to implement the calculation of J coupling in the RS-LMTO-ASA was motivated when Dr. J. Kapoor (Hahn Meitner Institute, Berlin) suggested that the puzzling results obtained when the TDPAD technique was applied to study isolated Fe impurities in AuCr alloys, could be due to the exchange coupling between Fe and Cr nearest neighbor sites. The effort to investigate which would be the most efficient way to treat the J coupling in itinerant metallic systems within the RS-LMTO-ASA scheme started in 1997, during the visit of S. Frota-Pessôa to the Hahn Meitner Institute in Berlin, but progressed slowly due to other projects and the actual implementation was only concluded in 1999.
+
+To obtain an expression for the exchange coupling J between two sites in a magnetic system we follow the literature (A. I. Liechtenstein et al., J. Magn. Magn. Mater. 67, 65 (1987)) and assume that the magnetic excitations in itinerant metals can be described in terms of an effective Heisenberg model, where the interatomic exchange integrals between the sites can be obtained from first-principles spin-density-functional theory.
+
+This approach, in conjunction with the k-space LMTO-ASA formalism, had already been used by Dr. J. Kudrnovský (Academy of Science of the Czech Republic, Prague) to obtain the exchange constant J between two sites in Fe, Co and Ni, as a function of the distance between the sites, but the formulas he used had to be converted to real space to be consistent with the RS approach. The advantage of the real space approach is the fact that it can be used to study the coupling between impurities in metallic hosts and other non-periodic systems, but to test the results we have initially performed calculations for simple crystalline systems, where comparisons with existing k-space results can be made.
+
+The first calculations of the J coupling were performed for fcc Ni, fcc Co and bcc Fe, for which there were results available in the literature. The work was the result of a collaboration with Dr. Josef Kudrnovský who furnished the k-space results and with Prof. Dr. R. B. Muniz (Universidade Federal Fluminense, Niteroi, Brasil), who has experience in the area and actively participated in the discussions. The effort resulted in an article (S. Frota-Pessôa, R. B. Muniz and J. Kudrnovský, Phys. Rev. B62, 5293 (2000)) which stands as a reference for our treatment of the J coupling. The very good agreement between the results of J as a function of distance calculated in real space and in k-space shows that the implementation is correct and can be used to study more complex non-periodic systems (S. Frota-Pessôa, J. Magn. Magn. Mater. 226-230 (2001), O. Beutler et al., Europhysics Letters 70, 520 (2005), A. Bergman et al., Phys. Rev. B75, 224425, (2007)).
+
+ 
+
+## Electric Field Gradient
+
+The group in S. Paulo has been interested in the behavior of the EFG in metals since 1984, when Helena M. Petrilli, now a professor at the University of S. Paulo and an expert in EFG, started her graduate work with Prof. Dr. S. Frota-Pessôa.
+
+At the time,  Dr. Diana Guenzburger , called our attention an article (L. Amaral, F. P. Livi and A. A. Gomes, Anais da Academia Brasileira de Ciências 56,  17 (1984)) which gave an expression for the d-electron contribution to the EFG for Hamiltonians of the tight-binding form. The expression was given as a product of two parts: the first was an integral involving the radial part of the d-wave functions and the second an angular part, given in terms of generalized orbital dependent occupations. This expression in conjunction with a parameterized tight-binding Hamiltonian was used to obtain the d-contribution to the EFG of an impurity in a metallic host (H. M. Petrilli and S. Frota-Pessôa, J. Phys. F: Met. Phys. 15,  2307 (1985)).
+
+After the visit to Prof. Olle Andersen´s group in 1986, the group in S. Paulo started to use the orthogonal representation of the LMTO-ASA  formalism to obtain a better parameterized Hamiltonian including, not only d, but also s and p  orbitals. The expression for the EFG was then generalized to give s and p contributions (H. M. Petrilli and S. Frota-Pessôa, J. of Phys: Condens. Matter 2, 135 (1990)). EFG results for a large number of hcp metals were calculated using this real space approach and found to be in good agreement with those obtained by k-space by Blaha and Schwarz for the same metals.  (M. S. Methfessel  and S. Frota-Pessôa, J. of Phys: Condens. Matter 2, 149 (1990)). We note that real space methods have no restrictions regarding symmetry and can be applied to systems which lack periodicity. Other systems, including amorphous Zr, were studied using this approach (H. M. Petrilli and S. Frota Pessôa, Hyperfine Interactions 60, 643 (1990),  H. M. Petrilli and S. Frota-Pessôa, Phys. Rev. B44, 10493 (1991)).
+
+After 1991, with the development of the RS-LMTO-ASA scheme, first-principles studies of the EFG could be performed directly in real space. In her PhD work, Dr. Sandra Ferreira, who also contributed to perfect some aspects of the RS-LMTO-ASA codes, studied the EFG around vacancies in Al and Cu (S. Ferreira and S. Frota-Pessôa, Phys. Rev.B51, 2045 (1995)), contributing to the understanding of these systems. Presently the first-principles RS-LMTO-ASA scheme, within the restrictions imposed by the ASA approximation, can be used to obtain the EFG at a given site for periodic and non-periodic metallic system, including clusters embedded in metallic hosts and surfaces.
+
+
+
+*/

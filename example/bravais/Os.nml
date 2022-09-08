@@ -1,0 +1,24 @@
+&element
+    symbol='Os',
+    atomic_number=76,
+    core=54,
+    valence=8,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/
+&par
+    center_band_s_up = -0.402783777
+    center_band_p_up =  0.374740359
+    center_band_d_up = -0.113848676
+    center_band_s_dw = -0.402783777
+    center_band_p_dw =  0.374740359
+    center_band_d_dw =  -0.113848676
+    width_band_s_up = 0.394180850
+    width_band_p_up = 0.242836136
+    width_band_d_up = 0.178153451
+    width_band_s_dw = 0.394180850
+    width_band_p_dw = 0.242836136
+    width_band_d_dw = 0.178153451
+/

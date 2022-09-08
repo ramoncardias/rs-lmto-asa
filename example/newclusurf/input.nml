@@ -1,0 +1,34 @@
+&calculation
+pre_processing = 'newclusurf' ! builds a bulk clust from bulk using rc, crystal_sym and ndim; then cuts the surface
+verbose = F
+/
+&lattice
+ndim = 99000 ! cluster dimension to begin with. We could think about guess it from the atom density in the primitive cell and the radius cut. Has a big number as default
+rc = 300 ! radius cut. We could think about setting a default
+alat = 2.86120
+crystal_sym = 'bcc' ! options are bcc, fcc and hcp so far.
+nlay = 6 ! number of layers
+surftype = '0 0 1' ! options are 001, 110 and 111 for bcc and fcc. Only 0001 for hcp
+nclu = 1
+inclu(1,:) =  0.000000,   0.000000,   0.000000
+/
+&atoms
+database = './'
+label(1) = 'Fe-bulk'
+label(2) = 'Fe-ES'
+label(3) = 'Fe-S'
+label(4) = 'Fe-S-1'
+label(5) = 'Fe-S-2'
+label(6) = 'Fe-S-3'
+label(7) = 'Fe-S-4'
+label(8) = 'Fe-imp'
+/
+&self
+valence = 8.0 ! not really using in this first moment
+ws_all = .true. ! ''
+fermi = 0.08 ! It is a mandatory input in case of surface or impurity calculation
+/
+&control
+calctype = 'I' ! If 'I', builds correctly the irec(:) with the chosen atoms for each layer. If not, irec(:) won't be constructed. Careful!
+nsp = 2 ! Not really using in this first moment
+/

@@ -1,0 +1,10 @@
+&element
+    symbol='He',
+    atomic_number=2,
+    core=0,
+    valence=2,
+    f_core=0,
+    num_quant_s=1,
+    num_quant_p=2,
+    num_quant_d=3
+/

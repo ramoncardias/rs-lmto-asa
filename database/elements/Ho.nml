@@ -1,0 +1,10 @@
+&element
+    symbol='Ho',
+    atomic_number=67,
+    core=54,
+    valence=2,
+    f_core=11,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

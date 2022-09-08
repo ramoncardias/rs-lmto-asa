@@ -1,0 +1,24 @@
+&element
+    symbol='Fe',
+    atomic_number=26,
+    core=18,
+    valence=8,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/
+&par
+center_band_s_up =  11.5
+center_band_p_up = -21.5
+center_band_d_up =  31.5
+center_band_s_dw = -41.5
+center_band_p_dw =  51.5
+center_band_d_dw = -61.5
+width_band_s_up =   71.5
+width_band_p_up =  -81.5
+width_band_d_up =   91.5
+width_band_s_dw = -101.5
+width_band_p_dw =  111.5
+width_band_d_dw = -121.5
+/

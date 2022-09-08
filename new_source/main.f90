@@ -1,0 +1,40 @@
+program main
+
+  use calculation_mod
+  use os_mod
+  use, intrinsic :: iso_fortran_env, only: output_unit
+  use precision_mod, only: rp
+  use logger_mod, only: g_logger
+
+  implicit none
+  type(calculation) :: calculation_obj
+  type(argument_parser) :: args
+  real(rp) :: start, finish
+  integer :: nomp
+#ifdef OMP
+  ! External functions
+  integer, external :: omp_get_num_threads
+#endif
+
+
+#ifdef OMP
+   !$omp parallel 
+   !$omp master
+   nomp=omp_get_num_threads()
+   !$omp end master
+   !$omp end parallel
+#endif
+  call g_logger%debug('Initializing with DEBUG=ON',__FILE__,__LINE__)
+
+  ! Input
+  args = argument_parser()
+  calculation_obj = calculation(args%input)
+
+
+  ! Run
+  call cpu_time(start)
+  call calculation_obj%process
+  call cpu_time(finish)
+
+  print '("Time = ",f10.3," seconds.")',(finish-start)!/nomp
+end program main

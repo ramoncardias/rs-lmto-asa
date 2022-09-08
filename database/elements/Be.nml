@@ -1,0 +1,10 @@
+&element
+    symbol='Be',
+    atomic_number=4,
+    core=2,
+    valence=2,
+    f_core=0,
+    num_quant_s=2,
+    num_quant_p=2,
+    num_quant_d=3
+/

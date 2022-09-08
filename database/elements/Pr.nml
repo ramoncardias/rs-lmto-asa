@@ -1,0 +1,10 @@
+&element
+    symbol='Pr',
+    atomic_number=59,
+    core=54,
+    valence=2,
+    f_core=3,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

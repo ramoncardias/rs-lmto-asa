@@ -1,0 +1,10 @@
+&element
+    symbol='At',
+    atomic_number=85,
+    core=54,
+    valence=17,
+    f_core=14,
+    num_quant_s=6,
+    num_quant_p=6,
+    num_quant_d=5
+/

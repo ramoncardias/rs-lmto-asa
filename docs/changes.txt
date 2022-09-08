@@ -1,0 +1,95 @@
+ -------------------------------------------------------- 
+  ___  ___     _    __  __ _____ ___       _   ___   _    
+ | _ \/ __|___| |  |  \/  |_   _/ _ \ ___ /_\ / __| /_\   
+ |   /\__ \___| |__| |\/| | | || (_) |___/ _ \\__ \/ _ \  
+ |_|_\|___/   |____|_|  |_| |_| \___/   /_/ \_\___/_/ \_\ 
+ -------------------------------------------------------- 
+ 
+---------------------------------
+ Changes from old RS-LMTO codes:
+---------------------------------
+
+Changes by ivan.miranda@usp.br 18/05/2019:
+* Update of the FTYPE(IFCORE) subroutine in mbomlz.F90 to accept other f core configurations, instead of only 0, 7 and 14 f electrons.
+* Therefore, in the 7th line of control file, one can use the following definitions:
+  0 --> to zero electrons in the f core (non-existent f core), as before
+  1 --> to a full f core (14 electrons), as before
+  2 --> to a half-filled f core (7 electrons), as before
+  3,4,...,14 --> to set explicitly the number of f electrons in the core
+  15 --> to set 1 f core electron 
+  16 --> to set 2 f core electrons
+
+Changes by ivan.miranda@usp.br 09/05/2019:
+* Calculation of on-site and nonlocal Gilbert damping parameters in the torque-correlation (TC) model.
+* To do that, one needs the 'damping.in' input file (otherwise the program will proceed without calculating it).
+
+Changes by anders.i.bergman@gmail.com 02/05/2009: 
+* Treatment of hoh-term has been improved.
+
+Changes by anders.i.bergman@gmail.com 30/04/2009: 
+* XC-potential routines have been improved. GGA now avaliable.
+
+Changes by anders.i.bergman@gmail.com 06/01/2009: 
+* Included new type of input in control file
+
+Changes by anders.i.bergman@gmail.com 28/08/2007: 'ver.0.97'
+* Bugfixes related to the rotation of the Hamiltonian. 
+
+Changes by anders.i.bergman@gmail.com 28/08/2007: 'ver.0.96'
+* Introduced new list ham_i for improved construction of Hamiltonians when NTOT > NTYPE. 
+   Previous versions were only based on NTYPE (i.e. number of nonequivalent atoms) without taking into account the NTOT (number of different sites)
+* Added utility ger2bra to export potential parameters and moments from Stuttgart LMTO-ASA (LMTO47) CTRL file to the RS-LMTO-ASA potential and atomic files.
+
+Changes by anders.i.bergman@gmail.com 18/07/2007: 'ver.0.95'
+
+* The hoh-term can now be included for all kinds (scalar-relativistic, spin-orbit, and non-collinear) of calculations.
+   This is controlled in the control file which now has the final line looking as:
+   LROT,INCORB,MEXT,SVAC,HOH,CALCTYPE. For normal ('classic') use the line can look as 'F F 0 F F I'.
+* All larger arrays are now handled dynamically and there is no longer any need for the NDIM, NTY and NNMX parameters.
+* Structb.f has been modified and f90-fied. Changes include a dynamical memory handling for the critical arrays, but
+  more importantly modifications to calculate the structure constants using a larger cluster of neighbouring atoms (i.e. more accurate).
+* Small tweaking of the MPI communication in recur. It is now possible (but not optimal) to have a number of processors that is not evenly divisible with 18.
+* Added profiling functionality (routines from the BigDFT project) for memory and time.
+
+Changes by anders.i.bergman@gmail.com 23/02/2007: 'ver.0.90'
+
++ Bulk, surface, surface clusters and embedded clusters can be run with the same set of codes. (CALCTYPE= 'B','S' or 'I')
++ Collinear and non-collinear magnetization densities can be treated.
++ Scalar relativistic and fully relativistic with the L.S-term is possible.
++ Restructured code now follows f90 standard. Not using dynamical arrays but all important dimensions can be changed easily in commons.f90
++ Broyden mixing has been implemented. Set BETA to 0.00000 to activate.
++ Magnetic directions can be fixed by having FREEZE = T. (for non-collinear mode)
++ Optimization with BLAS routines and loop restructuring. Up to 50% speed improvement if optimized libraries are used. 
++ Improved MPI parallelization routines. Possibility for OpenMP parallelization is added. Both MPI and OMP should work at the same time but this is not tested.
++ Possibility to rotate spin-space along the local spin axis for each atom. (LROT= T or F)
++ Empty spheres can have the d-levels shifted up in energy (10 Ry) to avoid spurious peaks. Meant as emulation of only sp-basis for Es. (SVAC= T or F)
++ Very experimental acceleration of magnetic directions is included (MEXT=1 or 2). Not sure if it is useful or not.
+- Non-magnetic calculations has to be done as magnetic. (no NSPIN=1 function)
+- The hoh-term is NOT included in the Hamiltonian (yet).
+- The old 'freeze' possibility is removed.
+* The atomic data needed for exchange coupling calculations are now in 'jinfo' instead of 'fort.67'
+* The 'control' file has the same format as for old surface imp. case + an additional line. This line controls many of the new functions. The line contains:
+    LROT,INCORB,MEXT,SVAC,CALCTYPE. For normal ('classic') use the line can look as 'F F 0 F I'. 
+* The NSPIN value in control now controls type of magnetic calculation: 
+    1=Collinear scalar relativistic
+    2=Collinear scalar relativistic
+    3=Non-collinear scalar relativistic
+    4=Non-collinear fully relativistic
++ With fixed spins (FREEZE=T) for all atoms and LROT=T, only the diagonal part of the spin density is calculated => almost 3 times faster.
+  (Obviously, no relaxation of spin directions are possible then.)
++ Collection of utilities:
+  Construction:
+    bravais.x   | Builds cluster 'clust' from Bravais vectors and basis vectors in 'data'
+    buildsurf.x | Builds surface from bulk cluster. Uses 'clusup.ctr' as input
+    newclu.x    | Sorts a cluster according to information in 'inclu' and control
+  Preprocessing:
+    structb.x   | Calculates structure constants and neighbour maps
+    impmad.x    | Calculates madelung matrix elements for impurity configurations. Uses 'self','size', and 'clust'
+    bulkmat.x   | Calculates madelung matrix elements for bulk configurations. Uses 'file.lc'
+    surfmat.x   | Calculates madelung matrix elements for surface configurations. Uses 'alelay.dat' and 'sizelay'
+  Postproccesing:
+    ldos.x      | Calculates lm-projected LDOS, band energy, and spin and orbital moments from 'coefup' and 'coefdw'
+    report.x    | Calculates magnetic ordering and moments for non-collinear calculations. Uses 'minfo'
+    energy.x    | Calculates the total energy from data in 'self' and 'at*'
+
+

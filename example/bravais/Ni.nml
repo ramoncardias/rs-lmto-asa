@@ -1,0 +1,24 @@
+&element
+    symbol='Ni',
+    atomic_number=28,
+    core=18,
+    valence=10,
+    f_core=0,
+    num_quant_s=4,
+    num_quant_p=4,
+    num_quant_d=3
+/
+&par
+    center_band_s_up = -0.354254186
+    center_band_p_up =  0.351595922
+    center_band_d_up = -0.181942075
+    center_band_s_dw = -0.358105977
+    center_band_p_dw =  0.334551622
+    center_band_d_dw =  -0.236456221
+    width_band_s_up = 0.406168380
+    width_band_p_up = 0.270837540
+    width_band_d_up = 0.115693472
+    width_band_s_dw = 0.405053838
+    width_band_p_dw = 0.267453894
+    width_band_d_dw = 0.108712450
+/
