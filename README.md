@@ -1,5 +1,7 @@
 # RS-LMTO-ASA
 
+This is a project that has the goal to rewrite the RS-LMTO-ASA code as a OBB modern fortran, using namelists as inputs. This project is inspired by well known electronic structure codes like Quantum Espresso and DyNaMol. It is a not yet finished project. For the full functioning code, please visit https://gitlab.com/aibman/rslmto.
+
 The RS-LMTO-ASA code is an ab initio code based on Linear Muffin-tin Orbitals within the Atomic Sphere Approximation. 
 Instead of solving the eigenvalue problem by diagonalization, RS-LMTO-ASA uses the Haydock recursion method to calculate the local density of states in real-space.
 
@@ -8,7 +10,7 @@ Instead of solving the eigenvalue problem by diagonalization, RS-LMTO-ASA uses t
 
 1. Download the code 
 ```bash
-   git clone git@gitlab.com:aibman/rslmto.git
+   git clone https://github.com/ramoncardias/rs-lmto-asa.git
 ```
 
 2. Build the code
