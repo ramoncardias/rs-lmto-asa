@@ -24,6 +24,7 @@ module safe_alloc_mod
     use string_mod, only: sl, int2str
     use logger_mod, only : g_logger
     use string_mod
+    use report_mod
     implicit none
 
     ! private
@@ -36,15 +37,15 @@ module safe_alloc_mod
         procedure :: report => alloc_infos_report
     end type
 
-    type, public :: safe_alloc
+    type :: safe_alloc
         type(alloc_infos), dimension(:), allocatable, private :: allocs_historic
     contains
         procedure, private :: push_new_info
         procedure, private :: alloc_int_1d
         procedure, private :: dealloc_int_1d
-        procedure :: report => safe_alloc_report
-        generic :: alloc => alloc_int_1d!, alloc_int_nd
-        generic :: dealloc => dealloc_int_1d!, alloc_int_nd
+        procedure :: print_report => safe_alloc_report
+        generic :: allocate => alloc_int_1d!, alloc_int_nd
+        generic :: deallocate => dealloc_int_1d!, alloc_int_nd
         final :: destructor
     end type
 
@@ -57,7 +58,10 @@ module safe_alloc_mod
     end interface free
 
     ! Global
-    type(safe_alloc), public :: g_safe_alloc
+    type(safe_alloc) :: g_safe_alloc
+
+    ! Publics
+    public :: g_safe_alloc, safe_alloc
 
 contains
 
@@ -71,7 +75,6 @@ contains
         character(len=sl) :: label
         integer :: i,j, allocated_size
         type(alloc_infos), dimension(:), allocatable :: new_allocs_historic
-        print *, 'destructor'
         do while (size(this%allocs_historic) > 1)
             label = this%allocs_historic(1)%label
             allocated_size = this%allocs_historic(1)%size
@@ -140,18 +143,21 @@ contains
             new_alloc%type = 'integer'
             new_alloc%size = -size(list)
             call this%push_new_info(new_alloc)
+            deallocate(list)
         else
             call g_logger%warning('Deallocating list "' // trim(label) // '" not allocated',__FILE__,__LINE__)
         endif
     end subroutine dealloc_int_1d
 
-
     subroutine safe_alloc_report(this)
         class(safe_alloc), intent(in) :: this
+        type(report) :: rep
         integer :: i
+        rep = report('total')
         do i=1, size(this%allocs_historic)
-            call this%allocs_historic(i)%report()
+            if (this%allocs_historic(i)%size > 0) call rep%add_value(trim(rep%label)//'.'//this%allocs_historic(i)%label,this%allocs_historic(i)%size)
         enddo
+        call rep%print_report('MEMORY REPORT')
     end subroutine safe_alloc_report
 
     subroutine alloc_infos_report(this)
@@ -161,6 +167,7 @@ contains
         if (this%size < 0) action = 'deallocate'
         call g_logger%info('List ' // trim(this%label) // ' ' // trim(action) // ' ' // int2str(abs(this%size)) // ' of ' // trim(this%type), __FILE__, __LINE__)
     end subroutine alloc_infos_report
+
     ! subroutine alloc_int_nd(self,label,list,size)
     !     class(safe_alloc), intent(in) :: self
     !     character(len=*), intent(in) :: label

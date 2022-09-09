@@ -378,19 +378,19 @@ end subroutine pre_processing_buildsurf
     !call hamiltonian_obj%build_lsham
     recursion_obj = recursion(hamiltonian_obj,self_obj)
     !call cpu_time(start)
-    call recursion_obj%recur()
+    !call recursion_obj%recur()
     !call cpu_time(finish)
     !print '("Recursion time = ",f10.3," seconds.")',(finish-start)!/32
 
     dos_obj = dos(recursion_obj,self_obj)
     !Chebyshev test
     call cpu_time(start)
-!    call recursion_obj%chebyshev_recur()
+    call recursion_obj%chebyshev_recur()
 !    call recursion_obj%chebyshev_recur_full()
     call cpu_time(finish)
     print '("Recursion Chebyshev time = ",f10.3," seconds.")',(finish-start)!/32
 
-!    call dos_obj%chebyshev_dos()
+    call dos_obj%chebyshev_dos()
 !    call dos_obj%chebyshev_dos_full()
 
     green_obj = green(dos_obj)

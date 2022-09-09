@@ -4,7 +4,7 @@ run-tests=$(patsubst %,run-%,${tests})
 
 FC=gfortran
 EXE=test
-LFLAGS= -lblas -llapack -lunittest -L ../src -lrslmto -L../${SRC_DIR} -Wl,-rpath=../${SRC_DIR}
+LFLAGS= -lblas -llapack -lunittest -L ../src -lrslmto -L../${SRC_DIR} -Wl,-rpath=../${SRC_DIR} -DDEBUG
 OPTFLAGS=-cpp -ffree-line-length-512
 SRC=calculation charge control lattice logger math precision self string face element globals potential symbolic_atom
 SRC_DIR=../new_source

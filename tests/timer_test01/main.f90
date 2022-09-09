@@ -1,11 +1,11 @@
 program Main
     ! use globals_mod, only : g_timer
-    use timer_mod, only: time_reporter
+    use timer_mod, only: timer
 
-    type(time_reporter) :: tr
+    type(timer) :: tr
     integer :: i,j,sum
 
-    tr = time_reporter()
+    tr = timer()
 
     ! (3) Test your variables:
     do j=0,2
@@ -27,6 +27,6 @@ program Main
         enddo
         call tr%finish('Selfcon.calculation_2')
     enddo
-    call tr%report()
+    call tr%print_report()
 
 end program Main

@@ -319,9 +319,10 @@ contains
     implicit none
     character(len=*), intent(in) :: string
     character(len=*), intent(in) :: sep
-    character(len=sl), dimension(:), allocatable, intent(out) :: lstring
+    character(len=sl), dimension(:), allocatable, intent(inout) :: lstring
     integer :: length, i, idx0, idx1
     length = count([(string(i:i).eq.sep,i=1,len(string))])+1
+    if (allocated(lstring)) deallocate(lstring)
     allocate(lstring(length))
     idx0 = 1
     do i=1,length
@@ -338,7 +339,48 @@ contains
       idx0 = idx1+1
     enddo
   end subroutine split
+
+  !> Same as split but function instead
+  function fsplit(string,sep)
+    implicit none
+    character(len=*), intent(in) :: string
+    character(len=*), intent(in) :: sep
+    character(len=sl), dimension(:), allocatable :: fsplit
+    call split(string,sep,fsplit)
+  end function fsplit
+
+  !> Join elements of an array of strings by sep
+  subroutine join(lst_string,sep,string)
+    character(len=*), dimension(:), intent(in) :: lst_string
+    character(len=*), intent(in), optional :: sep
+    character(len=sl), intent(out) :: string
+    character(len=sl) :: sep_used
+    integer :: i
+    sep_used = ''
+    if (present(sep)) sep_used = sep
+    if (size(lst_string) > 0) then
+      string = trim(lst_string(1))
+      do i=2,size(lst_string)
+        string = trim(string)//trim(sep_used)//trim(lst_string(i))
+      enddo
+    else
+      string = ''
+    endif
+  end subroutine join
+
+  !> Same as join but function
+  function fjoin(lst_string,sep)
+    character(len=*), dimension(:), intent(in) :: lst_string
+    character(len=*), intent(in), optional :: sep
+    character(len=sl) :: fjoin
+    ! character(len=sl) :: sep_used
+    ! integer :: i
+    ! sep_used = ''
+    ! if (present(sep)) sep_used = sep
+    call join(lst_string,sep,fjoin)
+  end function fjoin
   
+
   !> Remove all occurrences of a character in string
   subroutine clean_string(string,c)
     character(len=*),intent(inout) :: string
@@ -362,20 +404,25 @@ contains
     i0 = 0
     do while(i .ne. 0)
       string = string(:i0+i-1)//trim(dst)//string(i0+i+src_len:)
-      i0 = i0+i+dst_len+1
-      i = index(string(i0:),src)
+      i0 = i0+i+dst_len-1
+      i = index(string(i0+1:),src)
     enddo
   end subroutine replace
+  
+  !> same as replace but function instead
+  function freplace(string,src,dst)
+    character(len=*), intent(in) :: string
+    character(len=*), intent(in) :: src, dst
+    character(len=sl) :: freplace
+    freplace = string
+    call replace(freplace,src,dst)
+  end function freplace
 
   !> checks if string ends with substring
   function endswith(string,substring)
     logical :: endswith
-    character(len=*), intent(in) :: string
-    character(len=*), intent(in) :: substring
-    integer :: substring_len, string_len
-    substring_len = len(trim(substring))
-    string_len = len(trim(string))
-    endswith = string(max(1,string_len-(substring_len-1)):) == substring
+    character(len=*), intent(in) :: string, substring
+
   end function endswith
 
   !> checks if string starts with substring
@@ -383,20 +430,70 @@ contains
     logical :: startswith
     character(len=*), intent(in) :: string
     character(len=*), intent(in) :: substring
-    integer :: substring_len, string_len
-    substring_len = len(trim(substring))
-    string_len = len(trim(string))
-    startswith = string(:substring_len) == substring
+    startswith = index(string,trim(substring)) .eq. 1
   end function startswith
 
-  function path_join(path1,path2)
-    character(len=*),intent(in) :: path1,path2
-    character(len=2*sl) :: path_join, prev_path
-    path_join = trim(path1)//'/'//trim(path2)
-    do while(prev_path /= path_join)
-      prev_path = path_join
+  !> retuns the number of times substring occurs in string
+  function str_count(string,substring)
+    integer :: str_count
+    character(len=*), intent(in) :: string
+    character(len=*), intent(in) :: substring
+    integer :: i, len_string, len_substring
+    len_string = len(string)
+    len_substring = len(substring)
+    str_count = 0
+    do i=1,len_string-len_substring
+      if(string(i:i+len_substring-1) == substring) str_count = str_count + 1
+    enddo
+  end function str_count
+
+  
+  !> checks if string contains substring
+  function str_contains(string,substring)
+    logical :: str_contains
+    character(len=*), intent(in) :: string
+    character(len=*), intent(in) :: substring
+    str_contains = index(string,substring) .ne. 0
+  end function str_contains
+
+  function path_join(paths)
+    character(len=*), dimension(:), intent(in) :: paths
+    character(len=sl) :: path_join
+    path_join = fjoin(paths,'/')
+    do while(str_contains(path_join,'//'))
       call replace(path_join,'//','/')
     enddo
+    if (endswith(path_join,'/')) path_join = path_join(:len(trim(path_join))-1)
   end function path_join
 
+  !> Count number or substring in string
+  function fcount_str(string, substring)
+    implicit none
+    character(len=*), intent(in) :: string, substring
+    integer :: i, i0, fcount_str
+    fcount_str = 0
+    i0 = 1
+    i = index(string(i0:), substring)
+    do while(i .ne. 0)
+      fcount_str = fcount_str + 1
+      i0 = i0+i
+      i = index(string(i0:), substring)
+    enddo
+  end function fcount_str
+
+  subroutine indent_str(string,amount)
+    character(len=*), intent(inout) :: string
+    integer, intent(in) :: amount
+    string = repeat(' ',amount)//trim(string(:len(string)-amount-1))
+  end subroutine indent_str
+
+  function findent_str(string,amount) 
+    character(len=*), intent(in) :: string
+    integer, intent(in) :: amount
+    character(len=sl) :: findent_str
+    findent_str = string
+    call indent_str(findent_str,amount)
+  end function findent_str
+
+  
 end module string_mod

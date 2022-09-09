@@ -10,7 +10,7 @@ LFLAGS= -llapack -lblas
 endif
 endif
 OPTFLAGS=-g -fbacktrace -fcheck=all -cpp -Ofast -ffree-line-length-0 -fpic 
-OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o
+OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o
 CPPFLAGS=-DDEBUG -DCOLOR
 FLAGS=${OPTFLAGS} ${CPPFLAGS}
 
@@ -35,7 +35,7 @@ run: ${EXE}
 	${FC} ${FLAGS} -c $<
 
 # dependencies
-safe_alloc.o: string.o
+safe_alloc.o: logger.o string.o report.o
 logger.o: string.o face.o
 string.o: precision.o
 math.o: precision.o
@@ -56,6 +56,7 @@ bands.o: control.o self.o green.o lattice.o symbolic_atom.o density_of_states.o 
 mix.o: precision.o
 namelist_generator.o: precision.o string.o
 timer.o: precision.o string.o globals.o
+report.o: precision.o string.o
 
 clean:
 	rm -rdf ${EXE} *.mod *.o *.so *.x
