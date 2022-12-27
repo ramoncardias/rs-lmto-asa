@@ -46,8 +46,6 @@ module hamiltonian_mod
     complex(rp), dimension(:,:,:,:), allocatable :: hmag 
     !> Hamiltonian built in ham0m_nc (description to be improved
     complex(rp), dimension(:,:,:), allocatable :: hhmag
-    ! > Symbolic atom
-    type(symbolic_atom), dimension(:), pointer :: symbolic_atom
     ! > Charge 
     type(charge), pointer :: charge
   contains
@@ -71,16 +69,13 @@ contains
   !> @brief
   !> Constructor
   !
-  !> @param[in] symbolic_atom_obj Variable that holds symbolic_atom_mod properties
   !> @param[in] charge_obj Variable that holds charge_mod properties
   !> @return type(hamiltonian)
   !---------------------------------------------------------------------------
-  function constructor(symbolic_atom_obj,charge_obj) result(obj)
+  function constructor(charge_obj) result(obj)
     type(hamiltonian) :: obj
-    type(symbolic_atom), target, dimension(:), allocatable, intent(in) :: symbolic_atom_obj
     type(charge), target, intent(in) :: charge_obj
 
-    obj%symbolic_atom => symbolic_atom_obj
     obj%charge => charge_obj
 
     call obj%restore_to_default()
@@ -181,8 +176,9 @@ contains
             this%ee(j+9,i  ,m,ntype) = this%hmag(j,i,m,1)+i_unit*this%hmag(j,i,m,2) ! Hx+iHy
           end do ! end of orbital j loop
         end do ! end of orbital i loop
+      !write(128,*) 'm=',m
+      !write(128,'(18f10.6)') real(this%ee(:,:,m,ntype))
       end do ! end of neighbour number
-      !write(128,'(18f10.6)') real(this%ee(:,:,1,ntype))
     end do ! end of atom type number
   end subroutine build_bulkham
 
@@ -228,20 +224,20 @@ contains
     vv = norm2(vet)
 
     ! Real to complex
-    dot = cmplx(dot_product(this%symbolic_atom(it)%potential%mom,this%symbolic_atom(jt)%potential%mom),kind=kind(0.0d0))
+    dot = cmplx(dot_product(this%charge%lattice%symbolic_atoms(it)%potential%mom,this%charge%lattice%symbolic_atoms(jt)%potential%mom),kind=kind(0.0d0))
     do i=1,this%charge%lattice%ntype
       do j=1,3
-        momc(i,j) = cmplx(this%symbolic_atom(i)%potential%mom(j),kind=kind(0.0d0))
+        momc(i,j) = cmplx(this%charge%lattice%symbolic_atoms(i)%potential%mom(j),kind=kind(0.0d0))
       end do
     end do
-    cross = cmplx(cross_product(this%symbolic_atom(it)%potential%mom,this%symbolic_atom(jt)%potential%mom),kind=kind(0.0d0))
+    cross = cmplx(cross_product(this%charge%lattice%symbolic_atoms(it)%potential%mom,this%charge%lattice%symbolic_atoms(jt)%potential%mom),kind=kind(0.0d0))
     hhhc(:,:) = cmplx(hhh(:,:),kind=kind(0.0d0)) 
 
     do ilm = 1,9
       do jlm = 1,9
         this%hhmag(ilm,jlm,4) = &
-        this%symbolic_atom(it)%potential%wx0(ilm)*hhhc(ilm,jlm)*this%symbolic_atom(jt)%potential%wx0(jlm) + &
-        this%symbolic_atom(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%symbolic_atom(jt)%potential%wx1(jlm)*dot   
+        this%charge%lattice%symbolic_atoms(it)%potential%wx0(ilm)*hhhc(ilm,jlm)*this%charge%lattice%symbolic_atoms(jt)%potential%wx0(jlm) + &
+        this%charge%lattice%symbolic_atoms(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%charge%lattice%symbolic_atoms(jt)%potential%wx1(jlm)*dot   
       end do
     end do
 
@@ -251,7 +247,7 @@ contains
 
     if(vv<=0.01d0)then
       do ilm = 1,9
-        this%hhmag(ilm,ilm,4) = this%hhmag(ilm,ilm,4)+this%symbolic_atom(it)%potential%cx0(ilm)
+        this%hhmag(ilm,ilm,4) = this%hhmag(ilm,ilm,4)+this%charge%lattice%symbolic_atoms(it)%potential%cx0(ilm)
       end do
     end if
 
@@ -259,9 +255,9 @@ contains
       do jlm = 1,9
         do ilm = 1,9
           this%hhmag(ilm,jlm,m) = &
-          (this%symbolic_atom(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%symbolic_atom(jt)%potential%wx0(jlm))*momc(it,m)+&
-          (this%symbolic_atom(it)%potential%wx0(ilm)*hhhc(ilm,jlm)*this%symbolic_atom(jt)%potential%wx1(jlm))*momc(jt,m)+&
-          i_unit*this%symbolic_atom(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%symbolic_atom(jt)%potential%wx1(jlm)*cross(m) 
+          (this%charge%lattice%symbolic_atoms(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%charge%lattice%symbolic_atoms(jt)%potential%wx0(jlm))*momc(it,m)+&
+          (this%charge%lattice%symbolic_atoms(it)%potential%wx0(ilm)*hhhc(ilm,jlm)*this%charge%lattice%symbolic_atoms(jt)%potential%wx1(jlm))*momc(jt,m)+&
+          i_unit*this%charge%lattice%symbolic_atoms(it)%potential%wx1(ilm)*hhhc(ilm,jlm)*this%charge%lattice%symbolic_atoms(jt)%potential%wx1(jlm)*cross(m) 
         end do
       end do
     end do
@@ -269,7 +265,7 @@ contains
     if(vv>0.01d0)return
     do m=1,3
       do ilm=1,9
-        this%hhmag(ilm,ilm,m) = this%hhmag(ilm,ilm,m)+this%symbolic_atom(it)%potential%cx1(ilm)*momc(it,m)
+        this%hhmag(ilm,ilm,m) = this%hhmag(ilm,ilm,m)+this%charge%lattice%symbolic_atoms(it)%potential%cx1(ilm)*momc(it,m)
       end do
     end do
     
@@ -332,15 +328,15 @@ contains
         end do
       end if      
     end do
-   ! do m=1,nr
-   !   write(123,*)'m=',m  
-   !   do mdir=1,4
-   !     write(123,*)'mdir=',mdir
-   !     do i=1,9
-   !       write(123,'(9f10.4)')(real(this%hmag(i,j,m,mdir)),j=1,9)
-   !     end do
-   !   end do
-   ! end do
+!    do m=1,nr
+!      write(123,*)'m=',m  
+!      do mdir=1,4
+!        write(123,*)'mdir=',mdir
+!        do i=1,9
+!          write(123,'(9f10.4)')(real(this%hmag(i,j,m,mdir)),j=1,9)
+!        end do
+!      end do
+!    end do
   end subroutine chbar_nc
 
   subroutine hmfind(this,vet,nr,hhh,m,ia,jn,ni,ntype)

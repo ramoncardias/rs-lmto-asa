@@ -23,6 +23,8 @@ module element_mod
     use, intrinsic :: iso_fortran_env, only: error_unit
     use precision_mod, only: rp
     use globals_mod, only: GLOBAL_DATABASE_FOLDER, GLOBAL_CHAR_SIZE
+    use string_mod, only: path_join, sl
+    use logger_mod, only: g_logger
     implicit none
 
     private
@@ -35,10 +37,6 @@ module element_mod
         !> Element related variables
         integer :: f_core, num_quant_s, num_quant_p, num_quant_d
         real(rp) :: atomic_number, core, valence
-        !> Moments as defined in Eq. 48. of Phys. Rev. B 43, 9538 (1991).
-        !> 1st index 1 = s-orbital, 2 = p-orbital, 3 = d-orbital
-        !> 2nd index 1 = spin-up, 2 = spin-dw
-        real(rp), dimension(:,:), allocatable  :: q0, q1, q2
     contains
         procedure :: build_from_file
         procedure :: restore_to_default
@@ -66,16 +64,27 @@ contains
         type(element) :: obj
         character(len=*), intent(in) :: label
         character(len=*), intent(in), optional :: database
+        character(len=3*sl) :: path_to_file
+        character(len=sl), dimension(2) :: lst_path_to_file
+
         call obj%restore_to_default()
         if(present(database)) then
-            call obj%build_from_file(trim(database) // '/' // trim(label) // '.nml')
-        else if(exists('./' // trim(label) // '.nml')) then
-            call obj%build_from_file('./' // trim(label) // '.nml')
-        else if(exists(GLOBAL_DATABASE_FOLDER // '/' // trim(label) // '.nml')) then
-            call obj%build_from_file(GLOBAL_DATABASE_FOLDER // '/' // trim(label) // '.nml')
+            lst_path_to_file(1) = database
         else
-            write(error_unit,'("[",A,":",I0,"]: Element ",A," not found in any database")') __FILE__,__LINE__,trim(label)
-            error stop
+            lst_path_to_file(1) = './'
+        endif
+        lst_path_to_file(2) = trim(label)//'.nml'
+        path_to_file = path_join(lst_path_to_file)
+        if(exists(path_to_file)) then
+            call obj%build_from_file(path_to_file)
+        else
+            lst_path_to_file(1) = GLOBAL_DATABASE_FOLDER
+            path_to_file = path_join(lst_path_to_file)
+            if(exists(path_to_file)) then
+                call obj%build_from_file(path_to_file)
+            else
+                call g_logger%fatal('Element '//trim(label)//' not found in any database',__FILE__,__LINE__)
+            endif
         endif
     end function constructor
     
@@ -86,9 +95,6 @@ contains
     !---------------------------------------------------------------------------
     subroutine destructor(this)
       type(element) :: this
-      if(allocated(this%q0)) deallocate(this%q0)
-      if(allocated(this%q1)) deallocate(this%q1)
-      if(allocated(this%q2)) deallocate(this%q2)
     end subroutine destructor
 
 
@@ -107,13 +113,11 @@ contains
         character(len=10) :: symbol
         integer :: f_core, num_quant_s, num_quant_p, num_quant_d
         real(rp) :: atomic_number, core, valence
-        real(rp), dimension(:,:), allocatable  :: q0, q1, q2
         
         ! variables associated with the reading processes
         integer :: iostatus, funit
 
-        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d,&
-                           & q0, q1, q2
+        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d
         ! Save previous values
         symbol = this%symbol
         atomic_number = this%atomic_number
@@ -123,10 +127,6 @@ contains
         num_quant_s = this%num_quant_s
         num_quant_p = this%num_quant_p
         num_quant_d = this%num_quant_d
-
-        call move_alloc(this%q0,q0)
-        call move_alloc(this%q1,q1)
-        call move_alloc(this%q2,q2)
 
         open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
         if(iostatus /= 0) then
@@ -150,10 +150,6 @@ contains
         this%num_quant_s = num_quant_s
         this%num_quant_p = num_quant_p
         this%num_quant_d = num_quant_d
-        
-        call move_alloc(q0,this%q0)
-        call move_alloc(q1,this%q1)
-        call move_alloc(q2,this%q2)
     end subroutine build_from_file
     
     !---------------------------------------------------------------------------
@@ -165,11 +161,6 @@ contains
         implicit none
         class(element), intent(out) :: this
 
-        allocate(this%q0(3,2),this%q1(3,2),this%q2(3,2))
-
-        this%q0(:,:) = 0.0d0
-        this%q1(:,:) = 0.0d0
-        this%q2(:,:) = 0.0d0
         this%symbol = ''
         this%atomic_number = -1
         this%core = -1
@@ -199,10 +190,8 @@ contains
         character(len=10) :: symbol
         integer :: f_core, num_quant_s, num_quant_p, num_quant_d
         real(rp) :: atomic_number, core, valence
-        real(rp), dimension(:,:), allocatable  :: q0, q1, q2
 
-        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d,&
-                           & q0, q1, q2
+        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d
 
         symbol = this%symbol
         atomic_number = this%atomic_number
@@ -213,26 +202,6 @@ contains
         num_quant_p = this%num_quant_p
         num_quant_d = this%num_quant_d
 
-        if(allocated(this%q0)) then
-            allocate(q0,mold=this%q0)
-            q0 = this%q0
-        else
-            allocate(q0(0,0))
-        endif
-        if(allocated(this%q1)) then
-            allocate(q1,mold=this%q1)
-            q1 = this%q1
-        else
-            allocate(q1(0,0))
-        endif
-        if(allocated(this%q2)) then
-            allocate(q2,mold=this%q0)
-            q2 = this%q2
-        else
-            allocate(q2(0,0))
-        endif
-
-      
         if(present(unit) .and. present(file)) then
             write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
             error stop
@@ -267,10 +236,8 @@ contains
         character(len=10) :: symbol
         integer :: f_core, num_quant_s, num_quant_p, num_quant_d
         real(rp) :: atomic_number, core, valence
-        real(rp), dimension(:,:), allocatable  :: q0, q1, q2
 
-        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d,&
-                           & q0, q1, q2
+        namelist /element/ symbol, atomic_number, core, valence, f_core, num_quant_s, num_quant_p, num_quant_d
 
         symbol = this%symbol
         atomic_number = this%atomic_number
@@ -281,26 +248,6 @@ contains
         num_quant_p = this%num_quant_p
         num_quant_d = this%num_quant_d
 
-        if(allocated(this%q0)) then
-            allocate(q0,mold=this%q0)
-            q0 = this%q0
-        else
-            allocate(q0(0,0))
-        endif
-        if(allocated(this%q1)) then
-            allocate(q1,mold=this%q1)
-            q1 = this%q1
-        else
-            allocate(q1(0,0))
-        endif
-        if(allocated(this%q2)) then
-            allocate(q2,mold=this%q2)
-            q2 = this%q2
-        else
-            allocate(q2(0,0))
-        endif
-
-      
         if(present(unit) .and. present(file)) then
             write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
             error stop
@@ -328,7 +275,7 @@ contains
         type(element), dimension(:), allocatable :: array_of_elements
         character(len=*), dimension(:), intent(in) :: elements
         character(len=*), intent(in), optional :: database
-        integer :: i, j
+        integer :: i
         allocate(array_of_elements(size(elements)))
         if(present(database)) then
             do i=1, size(elements)

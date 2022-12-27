@@ -23,8 +23,8 @@ module symbolic_atom_mod
     use, intrinsic :: iso_fortran_env, only: error_unit
     use element_mod, only: element
     use potential_mod, only: potential
-    use lattice_mod, only: lattice
     use string_mod, only: sl, replace, endswith
+    use precision_mod, only: rp
     implicit none
 
     private
@@ -36,6 +36,34 @@ module symbolic_atom_mod
     public :: load_state
 
     type, public :: symbolic_atom
+        !> Mixture occupation in self-consistent calculation. Default: 0.01.
+        !> 
+        !> Mixture occupation in self-consistent calculation.
+        !> 
+        !> Default: 0.01.
+        real(rp) :: mix
+
+        !> Spin-(up/down) occupation in self-consistent calculation. Default: 0.05.
+        !> 
+        !> Spin-(up/down) occupation in self-consistent calculation.
+        !> 
+        !> Default: 0.05.
+        real(rp) :: mixmag
+
+        !> Specify the number of rigid band calculation used.
+        !>
+        !> Specify the number of rigid band calculation used
+        integer :: rb
+        ! TODO
+        ! From common_cnstr
+        real(rp), dimension(3) :: mag_cfield, mag_cfield_diff
+        real(rp) :: chg_cfield, chg_cfield_diff
+        real(rp) :: chg_con_val, mag_con_val
+        ! TODO
+        real(rp) :: a
+        ! TODO (Charge?)
+        real(rp) :: dq, qc, qv
+        
         type(element) :: element
         type(potential) :: potential
     contains
@@ -43,6 +71,9 @@ module symbolic_atom_mod
         procedure :: restore_to_default
         procedure :: print_state => symbolic_atom_print_state
         procedure :: print_state_full => symbolic_atom_print_state_full
+        procedure :: mesh_grid_size
+        procedure :: B
+        procedure :: rho0
     end type symbolic_atom
 
     interface symbolic_atom
@@ -53,6 +84,8 @@ module symbolic_atom_mod
         procedure :: array_of_symbolic_atoms_from_memory
         procedure :: array_of_symbolic_atoms_from_file
     end interface array_of_symbolic_atoms
+
+    integer, parameter :: min_mesh_grid_size = 25
 
 contains
 
@@ -70,15 +103,17 @@ contains
         character(len=*), intent(in) :: label
         character(len=*), intent(in), optional :: database
         integer :: i
+
+        call obj%restore_to_default()
         obj%element = element(label,database)
         obj%potential = potential(label,database)
 
         ! Initial guess for the Pl's potential
-          do i=1,2 ! loop on spin channel
-            obj%potential%pl(1,i) = obj%element%num_quant_s + 0.5d0
-            obj%potential%pl(2,i) = obj%element%num_quant_p + 0.5d0
-            obj%potential%pl(3,i) = obj%element%num_quant_d + 0.5d0
-          end do  
+        !  do i=1,2 ! loop on spin channel
+        !    obj%potential%pl(1,i) = obj%element%num_quant_s + 0.5d0
+        !    obj%potential%pl(2,i) = obj%element%num_quant_p + 0.5d0
+        !    obj%potential%pl(3,i) = obj%element%num_quant_d + 0.5d0
+        !  end do
     end function constructor
     
     !---------------------------------------------------------------------------
@@ -103,6 +138,11 @@ contains
     subroutine restore_to_default(this)
         implicit none
         class(symbolic_atom), intent(out) :: this
+        this%mix = -1
+        this%mixmag = -1
+        this%rb = -1
+        this%a = 0.02d0
+
         call this%element%restore_to_default()
         call this%potential%restore_to_default()
     end subroutine restore_to_default
@@ -166,7 +206,71 @@ contains
         endif
     end subroutine symbolic_atom_print_state_full
 
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> TODO
+    !>
+    !> TODO
+    !---------------------------------------------------------------------------
+    function mesh_grid_size(this)
+        class(symbolic_atom), intent(in) :: this
+        integer :: mesh_grid_size
+        real(rp) :: B, Z
+        intrinsic EXP, LOG, MAX
 
+        Z = this%element%atomic_number
+        B = 1.d0 / (Z+Z+1.d0)
+        mesh_grid_size = MAX(min_mesh_grid_size,int(((.5d0+LOG(1.d0+this%potential%ws_r/B)/this%A) * 2.d0-1)/2)*2 + 1)
+    end function mesh_grid_size
+
+    !---------------------------------------------------------------------------
+    !> DESCRIPTION:
+    !> @breif
+    !> TODO Calculates the quantity B whatever it is
+    !---------------------------------------------------------------------------
+    function B(this)
+        class(symbolic_atom), intent(in) :: this
+        real(rp) :: B
+        B = this%potential%ws_r / (EXP(this%A*this%mesh_grid_size()-this%A)-1.d0)
+    end function B
+
+    !---------------------------------------------------------------------------
+    !> DESCRIPTION:
+    !> @breif
+    !> TODO Calculates the initial guess for charge density
+    !---------------------------------------------------------------------------
+    function rho0(this,nsp)
+        class(symbolic_atom), intent(in) :: this
+        integer, intent(in), optional :: nsp
+        real(rp), dimension(:,:), allocatable :: rho0
+        real(rp) :: b, ea, sum, rpb, r, ro, fac
+        integer :: ir, nr
+        integer :: nsp_
+        nsp_ = merge(nsp,1,present(nsp))
+        nr = this%mesh_grid_size()
+        allocate(rho0(nr,nsp_))
+        b = this%B()
+        ea = exp(this%a)
+        sum = 0.d0
+        rpb = b
+        do ir = 1,nr
+            r = rpb - b
+            ro = exp(-5.*r) * r * r
+            rho0(ir,1) = ro
+            sum = sum + this%a*rpb*ro
+            rpb = rpb * ea
+        end do
+        fac = this%element%atomic_number / (sum*2)
+        do ir = 1,nr
+            rho0(ir,1) = rho0(ir,1) * fac
+            rho0(ir,2) = rho0(ir,1)
+            write(101,*) ir, rho0(ir,1)
+            write(102,*) ir, rho0(ir,2)
+        end do
+    end function rho0
+
+    
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
     !> @brief Build an array of symbolic_atoms
@@ -197,12 +301,13 @@ contains
     !> @brief Build an array of symbolic_atoms from namelist 'atoms' in fname
     !
     !> @param[in] fname File containg the namelist 'atoms'
+    !> @param[in] size Size (integer) or array
     !> @return type(symbolic_atom), dimension(:), allocatable
     !---------------------------------------------------------------------------
-    function array_of_symbolic_atoms_from_file(fname,lattice_obj)
+    function array_of_symbolic_atoms_from_file(fname,size)
         use string_mod, only: sl
         type(symbolic_atom), dimension(:), allocatable :: array_of_symbolic_atoms_from_file
-        type(lattice), intent(in) :: lattice_obj
+        integer, intent(in) :: size
         character(len=*), intent(in) :: fname
 
         ! Readable variables
@@ -215,7 +320,7 @@ contains
         
         namelist /atoms/ database, label
 
-        allocate(label(lattice_obj%ntype))
+        allocate(label(size))
 
         open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
         if(iostatus /= 0) then

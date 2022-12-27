@@ -22,7 +22,7 @@
 module green_mod
 
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
-    use self_mod
+    use energy_mod
     use control_mod
     use lattice_mod
     use symbolic_atom_mod
@@ -38,17 +38,17 @@ module green_mod
     type, public :: green
       ! General variables
       !> Recursion
-      type(recursion), pointer :: recursion
+      class(recursion), pointer :: recursion
       !> Lattice
-      type(lattice), pointer :: lattice
-      !> Self
-      type(self), pointer :: self
+      class(lattice), pointer :: lattice
       !> Symbolic atom
-      type(symbolic_atom), dimension(:), pointer :: symbolic_atom
+      class(symbolic_atom), dimension(:), pointer :: symbolic_atom
       !> Density of states
-      type(dos), pointer :: dos
+      class(dos), pointer :: dos
       !> Control
-      type(control), pointer :: control
+      class(control), pointer :: control
+      !> Energy
+      class(energy), pointer :: en
       !> Onsite Green Function
       complex(rp), dimension(:,:,:,:), allocatable :: g0
     contains
@@ -76,8 +76,8 @@ contains
 
     obj%dos => dos_obj
     obj%recursion => dos_obj%recursion
-    obj%self => dos_obj%self
-    obj%symbolic_atom => dos_obj%recursion%hamiltonian%symbolic_atom
+    obj%en => dos_obj%en
+    obj%symbolic_atom => dos_obj%recursion%hamiltonian%charge%lattice%symbolic_atoms
     obj%lattice => dos_obj%recursion%lattice
     obj%control => dos_obj%recursion%lattice%control
 
@@ -102,7 +102,7 @@ contains
     !---------------------------------------------------------------------------
     subroutine restore_to_default(this)
       class(green) :: this
-      allocate(this%g0(this%self%channels_ldos+10,18,18,this%lattice%ntype))
+      allocate(this%g0(this%en%channels_ldos+10,18,18,this%lattice%ntype))
 
       this%g0(:,:,:,:) = (0.0d0,0.0d0)
     end subroutine restore_to_default
@@ -126,9 +126,9 @@ contains
     !real(rp), dimension(na,3), intent(inout) :: mom
     ! Local variables
     integer :: ia,ja,mdir,nw, ll_t, ie, j, i
-    real(rp), dimension(this%self%channels_ldos+10,this%lattice%ntype) :: dx,dy,dz
-    real(rp), dimension(18,this%self%channels_ldos+10) :: doso
-    real(rp), dimension(18,this%self%channels_ldos+10) :: dmag,dnmag
+    real(rp), dimension(this%en%channels_ldos+10,this%lattice%ntype) :: dx,dy,dz
+    real(rp), dimension(18,this%en%channels_ldos+10) :: doso
+    real(rp), dimension(18,this%en%channels_ldos+10) :: dmag,dnmag
     complex(rp) :: dfac, sfac, impi
     complex(rp),dimension(4) :: gspinor
     complex(rp), dimension(3) :: gmask, lmask
@@ -162,14 +162,14 @@ contains
         doso = 0.0d0
         call this%dos%density(doso,ia,mdir)
         if(this%control%nmdir==1) then
-          do ie=1,this%self%channels_ldos+10
+          do ie=1,this%en%channels_ldos+10
             do j=1,18
               this%g0(ie,j,j,ia)=-i_unit*doso(j,ie)*impi
             end do
-            write(300+ia,*) this%self%ene(ie), sum(doso(1:9,ie)), sum(doso(10:18,ie))
+            write(300+ia,*) this%en%ene(ie), sum(doso(1:9,ie)), sum(doso(10:18,ie))
           end do
         else  
-          do ie=1,this%self%channels_ldos+10
+          do ie=1,this%en%channels_ldos+10
             do j=1,9
               ! Charge, from main direction.. (not z-component)
               this%g0(ie,j,j,ia)    =this%g0(ie,j,j,ia)    -(doso(j,ie)+doso(j+9,ie))*dfac*lmask(mdir)!*1.0d0 /3.0d0 !mom(ja,mdir)**2

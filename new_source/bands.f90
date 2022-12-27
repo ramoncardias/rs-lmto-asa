@@ -23,7 +23,7 @@
 module bands_mod
 
     use control_mod
-    use self_mod
+    use energy_mod
     use green_mod
     use lattice_mod
     use symbolic_atom_mod
@@ -38,6 +38,21 @@ module bands_mod
    
     !> Module's main structure
     type, public :: bands
+      !> Green
+      class(green), pointer :: green
+      !> Lattice
+      class(lattice), pointer :: lattice
+      !> Symbolic atom
+      class(symbolic_atom), dimension(:), pointer :: symbolic_atom
+      !> Density of states
+      class(dos), pointer :: dos
+      !> Energy
+      class(energy), pointer :: en
+      !> Control
+      class(control), pointer :: control
+      !> Recursion
+      class(recursion), pointer :: recursion
+
       ! General variables
       !> Energy variable
       real(rp) :: e1, e1cheb
@@ -53,21 +68,6 @@ module bands_mod
       complex(rp), dimension(:,:,:,:), allocatable :: g0_x, g0_y, g0_z     
       !> Energy bands (?)
       real(rp), dimension(:,:,:), allocatable :: dspd 
-
-      !> Green
-      type(green), pointer :: green
-      !> Lattice
-      type(lattice), pointer :: lattice
-      !> Symbolic atom
-      type(symbolic_atom), dimension(:), pointer :: symbolic_atom
-      !> Density of states
-      type(dos), pointer :: dos
-      !> Self
-      type(self), pointer :: self
-      !> Control
-      type(control), pointer :: control
-      !> Recursion
-      type(recursion), pointer :: recursion
     contains
       procedure :: calculate_projected_green
       procedure :: calculate_projected_dos
@@ -100,9 +100,9 @@ module bands_mod
 
       obj%green => green_obj
       obj%lattice => green_obj%dos%recursion%lattice
-      obj%symbolic_atom => green_obj%dos%recursion%hamiltonian%symbolic_atom
+      obj%symbolic_atom => green_obj%dos%recursion%hamiltonian%charge%lattice%symbolic_atoms
       obj%dos => green_obj%dos
-      obj%self => green_obj%dos%self
+      obj%en => green_obj%dos%en
       obj%control => green_obj%dos%recursion%lattice%control 
       obj%recursion => green_obj%dos%recursion
 
@@ -138,15 +138,15 @@ module bands_mod
     subroutine restore_to_default(this)
       class(bands) :: this
 
-      allocate(this%dtot(this%self%channels_ldos+10))
-      allocate(this%dtotcheb(this%self%channels_ldos+10))
-      allocate(this%dx(this%self%channels_ldos+10,this%lattice%ntype))
-      allocate(this%dy(this%self%channels_ldos+10,this%lattice%ntype))
-      allocate(this%dz(this%self%channels_ldos+10,this%lattice%ntype))      
-      allocate(this%g0_x(9,9,this%self%channels_ldos+10,this%lattice%ntype))
-      allocate(this%g0_y(9,9,this%self%channels_ldos+10,this%lattice%ntype))
-      allocate(this%g0_z(9,9,this%self%channels_ldos+10,this%lattice%ntype))
-      allocate(this%dspd(6,this%self%channels_ldos+10,this%lattice%ntype))
+      allocate(this%dtot(this%en%channels_ldos+10))
+      allocate(this%dtotcheb(this%en%channels_ldos+10))
+      allocate(this%dx(this%en%channels_ldos+10,this%lattice%ntype))
+      allocate(this%dy(this%en%channels_ldos+10,this%lattice%ntype))
+      allocate(this%dz(this%en%channels_ldos+10,this%lattice%ntype))      
+      allocate(this%g0_x(9,9,this%en%channels_ldos+10,this%lattice%ntype))
+      allocate(this%g0_y(9,9,this%en%channels_ldos+10,this%lattice%ntype))
+      allocate(this%g0_z(9,9,this%en%channels_ldos+10,this%lattice%ntype))
+      allocate(this%dspd(6,this%en%channels_ldos+10,this%lattice%ntype))
 
       this%dtot(:) = 0.0d0
       this%dtotcheb(:) = 0.0d0
@@ -176,11 +176,11 @@ module bands_mod
       ik1 = 0
 
       !Make sure nv1 is odd
-      if(mod(this%self%channels_ldos,2)==0)then
-        nv1 = this%self%channels_ldos + 1
+      if(mod(this%en%channels_ldos,2)==0)then
+        nv1 = this%en%channels_ldos + 1
       else
-        nv1 = this%self%channels_ldos
-        this%self%channels_ldos = this%self%channels_ldos - 1
+        nv1 = this%en%channels_ldos
+        this%en%channels_ldos = this%en%channels_ldos - 1
       end if
       ik1 = nv1 
      
@@ -189,37 +189,37 @@ module bands_mod
 
       ! Calculate the total density of states
       do ia=1,this%lattice%nrec
-        do i=1,this%self%channels_ldos+10
+        do i=1,this%en%channels_ldos+10
           do j=1,9
             this%dtot(i) = this%dtot(i) - aimag(this%green%g0(i,j,j,ia)+this%green%g0(i,j+9,j+9,ia))/pi
             this%dtotcheb(i) = this%dtotcheb(i) + (this%dos%doscheb(ia,j,i)+this%dos%doscheb(ia,j+9,i))
           end do
-          !write(125,'(2f10.5)') this%self%ene(i), this%dtotcheb(i)
+          write(125,'(2f10.5)') this%en%ene(i), this%dtot(i)
         end do
       end do 
 
       ! Calculate the Fermi enery
-      ef_mag = this%self%fermi 
-      this%self%chebfermi = this%self%fermi
-      if(.not.(this%self%fix_fermi).and.this%control%calctype=='B')then
+      ef_mag = this%en%fermi 
+      this%en%chebfermi = this%en%fermi
+      if(.not.(this%en%fix_fermi).and.this%control%calctype=='B')then
         e1_mag = ef_mag
-        call this%fermi(ef_mag,this%self%edel,ik1_mag,this%self%energy_min,this%self%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
-        e1 = this%self%fermi
-        call this%fermi(this%self%fermi,this%self%edel,ik1,this%self%energy_min,this%self%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
+        call this%fermi(ef_mag,this%en%edel,ik1_mag,this%en%energy_min,this%en%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
+        e1 = this%en%fermi
+        call this%fermi(this%en%fermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
         this%nv1 = ik1
         this%e1 = e1_mag
 
         !For Chebyshev DOS
-        ef_mag = this%self%fermi
+        ef_mag = this%en%fermi
         e1_mag = ef_mag
-        call this%fermi(ef_mag,this%self%edel,ik1_mag,this%self%energy_min,this%self%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
-        e1 = this%self%chebfermi
-        call this%fermi(this%self%chebfermi,this%self%edel,ik1,this%self%energy_min,this%self%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
+        call this%fermi(ef_mag,this%en%edel,ik1_mag,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
+        e1 = this%en%chebfermi
+        call this%fermi(this%en%chebfermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
         this%nv1cheb = ik1
         this%e1cheb = e1_mag
-      else if(this%control%calctype=='B'.and.(this%self%fix_fermi))then
-        ik1 = nint((this%self%fermi-this%self%energy_min)/this%self%edel)
-        e1 = this%self%energy_min+(ik1-1)*this%self%edel
+      else if(this%control%calctype=='B'.and.(this%en%fix_fermi))then
+        ik1 = nint((this%en%fermi-this%en%energy_min)/this%en%edel)
+        e1 = this%en%energy_min+(ik1-1)*this%en%edel
         this%nv1 = ik1
         this%e1 = e1      
         this%nv1cheb = ik1
@@ -294,7 +294,7 @@ module bands_mod
            do l=1,3
               do m=1,2*l-1
                  o=(l-1)**2+m
-                 do ie=1,this%self%channels_ldos
+                 do ie=1,this%en%channels_ldos
                     this%dspd(l+soff,ie,na)=this%dspd(l+soff,ie,na)-aimag(this%green%g0(ie,o,o,na)+this%green%g0(ie,o+9,o+9,na))-&
                        isgn*this%symbolic_atom(na)%potential%mom(3)*aimag(this%green%g0(ie,o,o,na)-this%green%g0(ie,o+9,o+9,na)) &
                       -isgn*this%symbolic_atom(na)%potential%mom(2)*aimag(i_unit*this%green%g0(ie,o,o+9,na)-i_unit*this%green%g0(ie,o+9,o,na)) &
@@ -318,7 +318,7 @@ module bands_mod
 !      end do
 
 
-      do na=1,this%lattice%ntype
+      do na=1,this%lattice%nrec
         do i=1,6
           if(i>3)then
             nsp = 2
@@ -326,36 +326,36 @@ module bands_mod
             nsp = 1
           end if  
           soff=3*(nsp-1)
-          call simpson_m(sgef,this%self%edel,this%self%fermi,this%nv1,this%dspd(i,:,na),this%e1,0,this%self%ene)
-          call simpson_m(pmef,this%self%edel,this%self%fermi,this%nv1,this%dspd(i,:,na),this%e1,1,this%self%ene)
-          call simpson_m(smef,this%self%edel,this%self%fermi,this%nv1,this%dspd(i,:,na),this%e1,2,this%self%ene)
+          call simpson_m(sgef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,0,this%en%ene)
+          call simpson_m(pmef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,1,this%en%ene)
+          call simpson_m(smef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,2,this%en%ene)
 
           this%symbolic_atom(na)%potential%gravity_center(i-soff,nsp) = pmef/sgef
-          this%symbolic_atom(na)%element%q0(i-soff,nsp) = sgef
-          this%symbolic_atom(na)%element%q1(i-soff,nsp) = pmef
-          this%symbolic_atom(na)%element%q2(i-soff,nsp) = smef !- 2.0d0*(pmef/sgef)*pmef + ((pmef/sgef)**2)*sgef
+          this%symbolic_atom(na)%potential%ql(1,i-soff-1,nsp) = sgef
+          this%symbolic_atom(na)%potential%ql(2,i-soff-1,nsp) = pmef
+          this%symbolic_atom(na)%potential%ql(3,i-soff-1,nsp) = smef - 2.0d0*(pmef/sgef)*pmef + ((pmef/sgef)**2)*sgef
         end do
       end do 
-      chebmom = 0.0d0
-      chebmom1 = 0.0d0
-      chebmom2 = 0.0d0
-    do na=1,this%lattice%nrec
-      do i=1,18
-        call simpson_m(sgef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,0,this%self%ene)
-        call simpson_m(pmef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,1,this%self%ene)
-        call simpson_m(smef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,2,this%self%ene)
-        chebmom(i) = sgef
-        chebmom1(i) = pmef
-        chebmom2(i) = smef !- 2.0d0*(pmef/sgef)*pmef + ((pmef/sgef)**2)*sgef)
-      end do
+!      chebmom = 0.0d0
+!      chebmom1 = 0.0d0
+!      chebmom2 = 0.0d0
+!    do na=1,this%lattice%nrec
+!      do i=1,18
+!        call simpson_m(sgef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,0,this%self%ene)
+!        call simpson_m(pmef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,1,this%self%ene)
+!        call simpson_m(smef,this%self%edel,this%self%chebfermi,this%nv1cheb,this%dos%doscheb(na,i,:),this%e1cheb,2,this%self%ene)
+!        chebmom(i) = sgef
+!        chebmom1(i) = pmef
+!        chebmom2(i) = smef !- 2.0d0*(pmef/sgef)*pmef + ((pmef/sgef)**2)*sgef)
+!      end do
 
       !write(*,*) this%symbolic_atom(1)%potential%gravity_center(1,1)
 !      write(102,*) sum(this%symbolic_atom(1)%element%q0(:,1))+sum(this%symbolic_atom(1)%element%q0(:,2)), &
 !                   sum(this%symbolic_atom(1)%element%q1(:,1))+sum(this%symbolic_atom(1)%element%q1(:,2)), &
 !                   sum(this%symbolic_atom(1)%element%q2(:,1))+sum(this%symbolic_atom(1)%element%q2(:,2))
-      write(101,*) chebmom(1), sum(chebmom(2:4)), sum(chebmom(5:9)), chebmom(10), sum(chebmom(11:13)), sum(chebmom(14:18))
-      write(101,*) this%qqv
-    end do
+!      write(101,*) chebmom(1), sum(chebmom(2:4)), sum(chebmom(5:9)), chebmom(10), sum(chebmom(11:13)), sum(chebmom(14:18))
+!      write(101,*) this%qqv
+!    end do
     end subroutine calculate_moments
 
 
@@ -381,12 +381,12 @@ module bands_mod
 
       call chebyshev_gauss_quadrature(this%control%lld,x_i(:),q_i(:)) 
 
-      w_i(:) = ((0.5*(x_i(:)+1))*(this%self%energy_min))
-      w_i(:) = w_i(:) + this%self%chebfermi
-      q_i(:) = -((q_i(:)*(this%self%energy_min))/2)
+      w_i(:) = ((0.5*(x_i(:)+1))*(this%en%energy_min))
+      w_i(:) = w_i(:) + this%en%chebfermi
+      q_i(:) = -((q_i(:)*(this%en%energy_min))/2)
       ! Defining rescaling coeficients
-      a = (this%self%energy_max-this%self%energy_min)/(2-0.3)
-      b = (this%self%energy_max+this%self%energy_min)/2
+      a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+      b = (this%en%energy_max+this%en%energy_min)/2
         
       wscale(:) = ((w_i(:)-b)/a)
       ! Calculate the Chebyshev polynomials
@@ -439,9 +439,9 @@ module bands_mod
       call this%calculate_projected_dos() 
      
       do na=1,this%lattice%ntype
-        call simpson_m(this%symbolic_atom(na)%potential%mx,this%self%edel,this%self%fermi,this%nv1,this%dx(:,na),this%e1,0,this%self%ene)
-        call simpson_m(this%symbolic_atom(na)%potential%my,this%self%edel,this%self%fermi,this%nv1,this%dy(:,na),this%e1,0,this%self%ene)
-        call simpson_m(this%symbolic_atom(na)%potential%mz,this%self%edel,this%self%fermi,this%nv1,this%dz(:,na),this%e1,0,this%self%ene)
+        call simpson_m(this%symbolic_atom(na)%potential%mx,this%en%edel,this%en%fermi,this%nv1,this%dx(:,na),this%e1,0,this%en%ene)
+        call simpson_m(this%symbolic_atom(na)%potential%my,this%en%edel,this%en%fermi,this%nv1,this%dy(:,na),this%e1,0,this%en%ene)
+        call simpson_m(this%symbolic_atom(na)%potential%mz,this%en%edel,this%en%fermi,this%nv1,this%dz(:,na),this%e1,0,this%en%ene)
 
         this%symbolic_atom(na)%potential%mtot = sqrt((this%symbolic_atom(na)%potential%mx**2) +&
                                                      (this%symbolic_atom(na)%potential%my**2) +&
@@ -462,7 +462,7 @@ module bands_mod
       integer :: ie ! Energy channel index
 
       do na = 1,this%lattice%ntype
-        do ie = 1,this%self%channels_ldos+10
+        do ie = 1,this%en%channels_ldos+10
           do i=1,9
             this%dz(ie,na) = this%dz(ie,na) - aimag(this%green%g0(ie,i,i,na)-this%green%g0(ie,i+9,i+9,na))/pi
             this%dy(ie,na) = this%dy(ie,na) - aimag(i_unit*this%green%g0(ie,i,i+9,na)-i_unit*this%green%g0(ie,i+9,i,na))/pi
@@ -480,7 +480,7 @@ module bands_mod
       integer :: ie ! Energy channel index
 
       do na = 1,this%lattice%ntype
-        do ie = 1,this%self%channels_ldos+10
+        do ie = 1,this%en%channels_ldos+10
           do i=1,9
             do j=1,9
               this%g0_z(i,j,ie,na) = this%g0_z(i,j,ie,na) + (this%green%g0(ie,i,i,na)-this%green%g0(ie,i+9,i+9,na))

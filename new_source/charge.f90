@@ -23,7 +23,7 @@
 module charge_mod
 
   use lattice_mod
-  use self_mod
+  use string_mod, only: sl
   use math_mod, only: pi, sqrt_pi, cross_product, ang2au, distance, angle, pos, erodrigues, normalize
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
@@ -109,19 +109,17 @@ contains
   !> @brief
   !> Constructor
   !
-  !> @param[in] fname Namelist file
   !> @param[in] lattice_obj Pointer to system's lattice
   !> @return type(calculation)
   !---------------------------------------------------------------------------
-  function constructor(fname,lattice_obj) result(obj)
+  function constructor(lattice_obj) result(obj)
     type(charge) :: obj
     type(lattice), target, intent(in) :: lattice_obj
-    character(len=*), intent(in) :: fname
 
     obj%lattice => lattice_obj
     
     call obj%restore_to_default()
-    call obj%build_from_file(fname)
+    call obj%build_from_file()
   end function constructor
 
   !---------------------------------------------------------------------------
@@ -183,7 +181,8 @@ contains
   !---------------------------------------------------------------------------
   subroutine build_from_file(this,fname)
     class(charge), intent(inout) :: this
-    character(len=*), intent(in) :: fname
+    character(len=*), intent(in), optional :: fname
+    character(len=sl) :: fname_
     ! Namelist variables
     real(rp) :: gx, gy, gz, gt
     real(rp), dimension(:), allocatable :: wssurf
@@ -191,6 +190,13 @@ contains
     integer :: iostatus, funit
     ! Namelist
     namelist /charge/ gx, gy, gz, gt, wssurf
+
+    if (present(fname)) then
+      fname_ = fname
+      this%lattice%control%fname = fname
+    else
+      fname_ = this%lattice%control%fname
+    endif
 
     ! Save previous values  
     gx = this%gx
@@ -205,9 +211,9 @@ contains
     
     call move_alloc(this%wssurf,wssurf)
 
-    open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
+    open(newunit=funit,file=fname_,action='read',iostat=iostatus,status='old')
     if(iostatus /= 0) then
-      write(error_unit,'("[",A,":",I0,"]: file ",A," not found")') __FILE__,__LINE__,trim(fname)
+      write(error_unit,'("[",A,":",I0,"]: file ",A," not found")') __FILE__,__LINE__,trim(fname_)
       error stop
     endif
 

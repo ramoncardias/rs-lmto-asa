@@ -22,21 +22,32 @@
 
 module mix_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
+    use control_mod
+    use lattice_mod
+    use symbolic_atom_mod, only: symbolic_atom
     use precision_mod, only: rp
+    use string_mod
     implicit none
   
     private
   
     !> Module's main structure
     type, public :: mix
+      ! Lattice
+      class(lattice), pointer :: lattice
+      ! Symbolic atom
+      class(symbolic_atom), dimension(:), pointer :: symbolic_atom
       !> Description
       !> 
       !> Description
       integer :: var
+      !> Variables to save parameters for mixing
+      real(rp), dimension(:,:), allocatable :: qia, qia_new, qia_old
     contains
       procedure :: build_from_file
       procedure :: restore_to_default
       procedure :: print_state
+      procedure :: save_to_old
       final :: destructor
     end type mix
   
@@ -51,15 +62,18 @@ module mix_mod
     !> @brief
     !> Constructor
     !
-    !> @param[in] fname Input file with 'mix' namelist
+    !> @param[in] lattice_obj pointer
     !> @return type(mix)
     !---------------------------------------------------------------------------
-    function constructor(fname) result(obj)
+    function constructor(lattice_obj) result(obj)
       type(mix) :: obj
-      character(len=*), intent(in) :: fname
+      type(lattice), target, intent(in) :: lattice_obj
   
+
+      obj%lattice => lattice_obj
+      obj%symbolic_atom => lattice_obj%symbolic_atoms
       call obj%restore_to_default()
-      call obj%build_from_file(fname)
+      call obj%build_from_file()
     end function constructor
   
     !---------------------------------------------------------------------------
@@ -80,10 +94,9 @@ module mix_mod
     !
     !> @param[in] fname Namelist file
     !---------------------------------------------------------------------------
-    subroutine build_from_file(this, fname)
+    subroutine build_from_file(this)
       class(mix),intent(inout) :: this
-      character(len=*), intent(in) :: fname
-  
+      character(len=sl) :: fname 
       integer :: var
 
       ! variables associated with the reading processes
@@ -93,7 +106,7 @@ module mix_mod
 
       namelist /mix/ var
   
-  
+      fname = this%lattice%control%fname 
       var = this%var
   
       open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
@@ -120,10 +133,14 @@ module mix_mod
     !---------------------------------------------------------------------------
     subroutine restore_to_default(this)
       implicit none
-      class(mix), intent(out) :: this
+      class(mix), intent(inout) :: this
   
+      write(*,*) this%lattice%nrec
+      allocate(this%qia(this%lattice%nrec,18),this%qia_new(this%lattice%nrec,18),this%qia_old(this%lattice%nrec,18))
+
       this%var = 0
-      
+  
+
     end subroutine restore_to_default
   
     !---------------------------------------------------------------------------
@@ -163,5 +180,31 @@ module mix_mod
       endif
       close(newunit)
     end subroutine print_state
-  
-  end module mix_mod
+
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> Save potential parameters and band moments.
+    !>
+    !> Save potential parameters and band moments. Save the parameters read from the &par namelist into qia_old variable. To be used to mix later.
+    !> @param[in] dummy variable of type mix
+    !> @return type(mix)
+    !---------------------------------------------------------------------------
+    subroutine save_to_old(this)
+      class(mix), intent(inout) :: this
+      integer :: i, it
+
+      do it=1,this%lattice%nrec
+        do I = 1,3
+          this%QIA_OLD(IT,I) = this%symbolic_atom(it)%potential%QL(1,I-1,1)
+          this%QIA_OLD(IT,I+6) = this%symbolic_atom(it)%potential%QL(3,I-1,1)
+          this%QIA_OLD(IT,I+12) = this%symbolic_atom(it)%potential%PL(I-1,1) !- (0.5d0 + INT(PL(I,1)))
+          !QI_OLD(IT,I+12) = ENU(I,1)
+          this%QIA_OLD(IT,I+3) = this%symbolic_atom(it)%potential%QL(1,I-1,2)
+          this%QIA_OLD(IT,I+9) = this%symbolic_atom(it)%potential%QL(3,I-1,2)
+          this%QIA_OLD(IT,I+15) = this%symbolic_atom(it)%potential%PL(I-1,2) !- (0.5d0 + INT(PL(I,2)))
+          !QI_OLD(IT,I+15) = ENU(I,2)
+        end do
+      end do
+    end subroutine save_to_old 
+end module mix_mod

@@ -24,6 +24,7 @@ module calculation_mod
 
   use control_mod
   use self_mod
+  use energy_mod
   use lattice_mod
   use charge_mod
   use symbolic_atom_mod
@@ -32,6 +33,7 @@ module calculation_mod
   use green_mod
   use density_of_states_mod
   use bands_mod
+  use mix_mod
   use precision_mod, only: rp
   use string_mod, only: sl
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
@@ -190,33 +192,33 @@ contains
   subroutine pre_processing_newclubulk(this)
     class(calculation),intent(in) :: this
 
-    type(control) :: control_obj
-    type(lattice) :: lattice_obj
-    type(self) :: self_obj
-    type(charge) :: charge_obj
-    type(symbolic_atom), dimension(:), allocatable :: symbolic_atoms_obj
-    type(hamiltonian) :: hamiltonian_obj
-    type(recursion) :: recursion_obj
+    type(control), target :: control_obj
+    type(lattice), target :: lattice_obj
+    type(self), target :: self_obj
+    type(energy), target :: energy_obj
+    type(charge), target :: charge_obj
+    type(hamiltonian), target :: hamiltonian_obj
+    type(recursion), target :: recursion_obj
     real(rp) :: start, finish
     integer :: i
 
     call control_obj%restore_to_default
     call control_obj%build_from_file(this%fname)
     !control_obj = control_constructor(this%fname)
-    lattice_obj = lattice(this%fname,control_obj)
+    lattice_obj = lattice(control_obj)
     call lattice_obj%build_data()
     call lattice_obj%bravais()
     call lattice_obj%newclu()
     call lattice_obj%structb()
     call lattice_obj%atomlist()
-    self_obj = self(this%fname,lattice_obj)
-    charge_obj = charge(this%fname,lattice_obj)
+    self_obj = self(lattice_obj)
+    energy_obj = energy(lattice_obj)
+    charge_obj = charge(lattice_obj)
     call charge_obj%impmad
-    symbolic_atoms_obj = array_of_symbolic_atoms(this%fname,lattice_obj)
-    hamiltonian_obj = hamiltonian(symbolic_atoms_obj,charge_obj)
+    hamiltonian_obj = hamiltonian(charge_obj)
     call hamiltonian_obj%build_bulkham
     call hamiltonian_obj%build_locham
-    recursion_obj = recursion(hamiltonian_obj,self_obj)
+    recursion_obj = recursion(hamiltonian_obj,energy_obj)
     call cpu_time(start)
     call recursion_obj%recur
     call cpu_time(finish)
@@ -227,7 +229,6 @@ contains
       call lattice_obj%print_state()
       call self_obj%print_state()
       call charge_obj%print_state()
-      call save_state(symbolic_atoms_obj)
     endif
 
 end subroutine pre_processing_newclubulk
@@ -240,20 +241,20 @@ end subroutine pre_processing_newclubulk
   subroutine pre_processing_newclusurf(this)
     class(calculation),intent(in) :: this
 
-    type(control) :: control_obj
-    type(lattice) :: lattice_obj
-    type(self) :: self_obj
-    type(charge) :: charge_obj
-    type(symbolic_atom), dimension(:), allocatable :: symbolic_atoms_obj
-    type(hamiltonian) :: hamiltonian_obj
-    type(recursion) :: recursion_obj
+    type(control), target :: control_obj
+    type(lattice), target :: lattice_obj
+    type(self), target :: self_obj
+    type(energy), target :: energy_obj
+    type(charge), target :: charge_obj
+    type(hamiltonian), target :: hamiltonian_obj
+    type(recursion), target :: recursion_obj
     real(rp) :: start, finish
     integer :: i
 
     call control_obj%restore_to_default()
     call control_obj%build_from_file(this%fname)
     !control_obj = control(this%fname)
-    lattice_obj = lattice(this%fname,control_obj)
+    lattice_obj = lattice(control_obj)
     call lattice_obj%build_data()
     call lattice_obj%bravais()
     call lattice_obj%build_clusup()
@@ -261,14 +262,14 @@ end subroutine pre_processing_newclubulk
     call lattice_obj%newclu()
     call lattice_obj%structb()
     call lattice_obj%atomlist
-    self_obj = self(this%fname,lattice_obj)
-    charge_obj = charge(this%fname,lattice_obj)
+    self_obj = self(lattice_obj)
+    energy_obj = energy(lattice_obj)
+    charge_obj = charge(lattice_obj)
     call charge_obj%impmad
-    symbolic_atoms_obj = array_of_symbolic_atoms(this%fname,lattice_obj)
-    hamiltonian_obj = hamiltonian(symbolic_atoms_obj,charge_obj)
+    hamiltonian_obj = hamiltonian(charge_obj)
     call hamiltonian_obj%build_bulkham
     call hamiltonian_obj%build_locham
-    recursion_obj = recursion(hamiltonian_obj,self_obj)
+    recursion_obj = recursion(hamiltonian_obj,energy_obj)
     call cpu_time(start)
     call recursion_obj%recur
     call cpu_time(finish)
@@ -279,7 +280,6 @@ end subroutine pre_processing_newclubulk
       call lattice_obj%print_state()
       call self_obj%print_state()
       call charge_obj%print_state()
-      call save_state(symbolic_atoms_obj)
     endif
 
 end subroutine pre_processing_newclusurf
@@ -292,34 +292,34 @@ end subroutine pre_processing_newclusurf
   subroutine pre_processing_buildsurf(this)
     class(calculation),intent(in) :: this
 
-    type(control) :: control_obj
-    type(lattice) :: lattice_obj
-    type(self) :: self_obj
-    type(charge) :: charge_obj
-    type(symbolic_atom), dimension(:), allocatable :: symbolic_atoms_obj
-    type(hamiltonian) :: hamiltonian_obj
-    type(recursion) :: recursion_obj
+    type(control), target :: control_obj
+    type(lattice), target :: lattice_obj
+    type(self), target :: self_obj
+    type(energy), target :: energy_obj
+    type(charge), target :: charge_obj
+    type(hamiltonian), target :: hamiltonian_obj
+    type(recursion), target :: recursion_obj
     real(rp) :: start, finish
     integer :: i
 
     call control_obj%restore_to_default
     call control_obj%build_from_file(this%fname)
     !control_obj = control(this%fname)
-    lattice_obj = lattice(this%fname,control_obj)
+    lattice_obj = lattice(control_obj)
     call lattice_obj%build_data()
     call lattice_obj%bravais()
     call lattice_obj%build_clusup()
     call lattice_obj%build_surf()
     call lattice_obj%structb()
     call lattice_obj%atomlist()
-    self_obj = self(this%fname,lattice_obj)
-    charge_obj = charge(this%fname,lattice_obj)
+    self_obj = self(lattice_obj)
+    energy_obj = energy(lattice_obj)
+    charge_obj = charge(lattice_obj)
     call charge_obj%build_alelay
     call charge_obj%surfmat
-    symbolic_atoms_obj = array_of_symbolic_atoms(this%fname,lattice_obj)
-    hamiltonian_obj = hamiltonian(symbolic_atoms_obj,charge_obj)
+    hamiltonian_obj = hamiltonian(charge_obj)
     call hamiltonian_obj%build_bulkham
-    recursion_obj = recursion(hamiltonian_obj,self_obj)
+    recursion_obj = recursion(hamiltonian_obj,energy_obj)
     call cpu_time(start)
     call recursion_obj%recur
     call cpu_time(finish)
@@ -330,7 +330,6 @@ end subroutine pre_processing_newclusurf
       call lattice_obj%print_state()
       call self_obj%print_state()
       call charge_obj%print_state()
-      call save_state(symbolic_atoms_obj)
     endif
 
 end subroutine pre_processing_buildsurf
@@ -343,70 +342,96 @@ end subroutine pre_processing_buildsurf
   subroutine pre_processing_bravais(this)
     class(calculation),intent(in) :: this
 
-    type(control) :: control_obj
-    type(lattice) :: lattice_obj
-    type(self) :: self_obj
-    type(charge) :: charge_obj
-    type(symbolic_atom), dimension(:), allocatable :: symbolic_atoms_obj
-    type(hamiltonian) :: hamiltonian_obj
-    type(recursion) :: recursion_obj
-    type(green) :: green_obj
-    type(dos) :: dos_obj
-    type(bands) :: bands_obj
+    type(control), target :: control_obj
+    type(lattice), target :: lattice_obj
+    type(energy), target :: energy_obj
+    type(self), target :: self_obj
+    type(charge), target :: charge_obj
+    type(hamiltonian), target :: hamiltonian_obj
+    type(recursion), target :: recursion_obj
+    type(green), target :: green_obj
+    type(dos), target :: dos_obj
+    type(bands), target :: bands_obj
+    type(mix), target :: mix_obj
     real(rp) :: start, finish
+    real(rp), dimension(6) :: QSL
     integer :: i
 
  
+    ! Constructing control object
     call control_obj%restore_to_default
     call control_obj%build_from_file(this%fname)
     !control_obj = control(this%fname)
-    lattice_obj = lattice(this%fname,control_obj)
+
+    ! Constructing lattice object
+    lattice_obj = lattice(control_obj)
+    ! Constructing the charge object
+    charge_obj = charge(lattice_obj)
+
+    ! Running the pre-calculation
     call cpu_time(start)
     call lattice_obj%build_data()
     call lattice_obj%bravais()
+    call charge_obj%bulkmat()
     call lattice_obj%structb()
     call cpu_time(finish)
     print '("Pre-processing time = ",f10.3," seconds.")',(finish-start)!/32
 
+    ! Creating the symbolic_atom object
     call lattice_obj%atomlist()
-    self_obj = self(this%fname,lattice_obj)
-    charge_obj = charge(this%fname,lattice_obj)
-    call charge_obj%bulkmat
-    symbolic_atoms_obj = array_of_symbolic_atoms(this%fname,lattice_obj)
-    hamiltonian_obj = hamiltonian(symbolic_atoms_obj,charge_obj)
+
+    ! Constructing mixing object
+    mix_obj = mix(lattice_obj)
+
+    ! Creating the energy object
+    energy_obj = energy(lattice_obj)
+    call energy_obj%e_mesh()
+
+    ! Creating hamiltonian object
+    hamiltonian_obj = hamiltonian(charge_obj)
     call hamiltonian_obj%build_bulkham
     !call hamiltonian_obj%build_lsham
-    recursion_obj = recursion(hamiltonian_obj,self_obj)
-    !call cpu_time(start)
-    !call recursion_obj%recur()
-    !call cpu_time(finish)
-    !print '("Recursion time = ",f10.3," seconds.")',(finish-start)!/32
 
-    dos_obj = dos(recursion_obj,self_obj)
-    !Chebyshev test
+    ! Creating recursion object
+    recursion_obj = recursion(hamiltonian_obj,energy_obj)
     call cpu_time(start)
-    call recursion_obj%chebyshev_recur()
-!    call recursion_obj%chebyshev_recur_full()
+    call recursion_obj%recur()
     call cpu_time(finish)
-    print '("Recursion Chebyshev time = ",f10.3," seconds.")',(finish-start)!/32
+    print '("Recursion time = ",f10.3," seconds.")',(finish-start)!/32
 
-    call dos_obj%chebyshev_dos()
-!    call dos_obj%chebyshev_dos_full()
+    ! Creating density of states object
+    dos_obj = dos(recursion_obj,energy_obj)
+    !Chebyshev test
+!    call cpu_time(start)
+!    call recursion_obj%chebyshev_recur()
+!    call recursion_obj%chebyshev_recur_full()
+!    call cpu_time(finish)
+!    print '("Recursion Chebyshev time = ",f10.3," seconds.")',(finish-start)!/32
 
+!    call dos_obj%chebyshev_dos()
+    !    call dos_obj%chebyshev_dos_full()
+
+    ! Creating Green function object
     green_obj = green(dos_obj)
     call green_obj%sgreen()
+
+    ! Creating bands object
     bands_obj = bands(green_obj)
     call bands_obj%calculate_fermi()
     call bands_obj%calculate_moments()
-    call bands_obj%calculate_moments_chebgauss()
+!    call bands_obj%calculate_moments_chebgauss()
+
+    ! Creating the self object
+    self_obj = self(lattice_obj)
+    QSL = self_obj%lmtst(lattice_obj%symbolic_atoms(1))
+    call self_obj%run()
 
     if(this%verbose) then
       call control_obj%print_state()
       call lattice_obj%print_state()
       call self_obj%print_state()
       call charge_obj%print_state()
-      call save_state(symbolic_atoms_obj)
-      call print_state(symbolic_atoms_obj)
+      call print_state(lattice_obj%symbolic_atoms)
     endif
 
 end subroutine pre_processing_bravais

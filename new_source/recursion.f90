@@ -24,7 +24,7 @@ module recursion_mod
 
     use hamiltonian_mod
     use lattice_mod
-    use self_mod
+    use energy_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
     use precision_mod, only: rp
     use math_mod
@@ -34,6 +34,12 @@ module recursion_mod
   
     !> Module's main structure
     type, public :: recursion
+      !> Hamiltonian
+      class(hamiltonian), pointer :: hamiltonian
+      !> Lattice
+      class(lattice), pointer :: lattice
+      !> Energy
+      class(energy), pointer :: en
       ! General variables
 
       !> Scalar recursion coefficients
@@ -51,13 +57,6 @@ module recursion_mod
       real(rp), dimension(:,:,:,:), allocatable :: mu_n, mu_ng
       !> Variable to save H|psi>
       complex(rp), dimension(:,:), allocatable :: v
- 
-      !> Hamiltonian
-      type(hamiltonian), pointer :: hamiltonian
-      !> Lattice
-      type(lattice), pointer :: lattice
-      !> Self
-      type(self), pointer :: self
     contains
       procedure :: hop
       procedure :: crecal
@@ -85,14 +84,14 @@ module recursion_mod
     !> @param[in] fname Namelist file
     !> @return type(recursion)
     !---------------------------------------------------------------------------
-    function constructor(hamiltonian_obj,self_obj) result(obj)
+    function constructor(hamiltonian_obj,energy_obj) result(obj)
       type(recursion) :: obj
       type(hamiltonian), target, intent(in) :: hamiltonian_obj
-      type(self), target, intent(in) :: self_obj 
-
+      type(energy), target, intent(in) :: energy_obj 
+      
       obj%hamiltonian => hamiltonian_obj
       obj%lattice => hamiltonian_obj%charge%lattice
-      obj%self => self_obj
+      obj%en => energy_obj
       
       call obj%restore_to_default()
     end function constructor
@@ -143,8 +142,8 @@ module recursion_mod
       nlimplus1 = this%lattice%nmax + 1
       allocate(hcheb(18,18,(this%lattice%nn(1,1)+1),this%lattice%kk))
  
-      a = (this%self%energy_max-this%self%energy_min)/(2-0.3)
-      b = (this%self%energy_max+this%self%energy_min)/2
+      a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+      b = (this%en%energy_max+this%en%energy_min)/2
 
       hcheb(:,:,:,:) = this%hamiltonian%ee(:,:,:,:) !hcheb(:,:,:,:)!/cmplx(a,0.d0)
 
@@ -283,8 +282,8 @@ module recursion_mod
       nlimplus1 = this%lattice%nmax + 1
       allocate(hcheb(18,18,(this%lattice%nn(1,1)+1),this%lattice%kk),psiref(18,18,this%lattice%kk))
  
-      a = (this%self%energy_max-this%self%energy_min)/(2-0.3)
-      b = (this%self%energy_max+this%self%energy_min)/2
+      a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+      b = (this%en%energy_max+this%en%energy_min)/2
 
       hcheb(:,:,:,:) = this%hamiltonian%ee(:,:,:,:) !hcheb(:,:,:,:)!/cmplx(a,0.d0)
 
@@ -563,24 +562,29 @@ module recursion_mod
       nm1 = this%lattice%control%lld - 1
       llmax = this%lattice%control%lld
       do ll=1,nm1
-        !write(301,*) sum(this%izero(:))
-        write(190,*)'ll', ll
         call cpu_time(start)
         call this%hop(ll)
         call cpu_time(finish)
-        write(190,*)'H|psi> lanczos', finish-start
         this%b2temp(ll) = summ
         ajc = -this%atemp(ll)
 
         call zaxpy(nat*hblocksize,ajc,this%psi,1,this%pmn,1)
 
+
+
         summ = 0.0d0
       
-        summ = real(zdotc(nat*hblocksize,this%pmn,1,this%pmn,1))
+        ! In case zdotc function lapack is not working
+        do i=1,nat
+          do k=1,18
+           summ = summ + real(conjg(this%pmn(k,i))*this%pmn(k,i))
+          end do
+        end do
+
+!        summ = real(zdotc(nat*hblocksize,this%pmn,1,this%pmn,1))
 
         s = 1.0d0/sqrt(summ)
 
-!        write(125,*) 's ', s
         thpsi(:,:) = this%pmn(:,:)*s
         this%pmn(:,:) = this%psi(:,:)
         this%psi(:,:) = thpsi(:,:)
@@ -633,8 +637,6 @@ module recursion_mod
       end do ! End of the loop on the orbitals
     end do ! End of the loop on the nrec
 
-    ! write(*,*) sum(this%a(1,1:9,1,1)), sum(this%a(1,10:18,1,1)), 'a0'
-    ! write(*,*) sum(this%a(2,1:9,1,1)), sum(this%a(2,10:18,1,1)), 'a1'
      ! For debug purposes
      !do i=1,this%lattice%nrec ! Loop on the number of atoms to be treat self-consistently
      !  do l=1,9  ! Loop on the orbital l
@@ -826,8 +828,9 @@ module recursion_mod
     !> @brief
     !> Reset all members to default
     !---------------------------------------------------------------------------
-    subroutine restore_to_default(this)
+    subroutine restore_to_default(this,full)
       class(recursion) :: this
+      logical, intent(in), optional :: full
       allocate(this%a(max(this%lattice%control%llsp,this%lattice%control%lld),&
                          &18,this%lattice%nrec,3))
       allocate(this%atemp(max(this%lattice%control%llsp,this%lattice%control%lld)))
@@ -855,7 +858,14 @@ module recursion_mod
       this%b2(:,:,:,:) = 0.0d0
       this%atemp(:) = 0.0d0
       this%b2temp(:) = 0.0d0
+
+      if (present(full) .and. full) then
+        if (associated(this%hamiltonian)) call this%hamiltonian%restore_to_default()
+        if (associated(this%lattice)) call this%lattice%restore_to_default()
+        if (associated(this%en)) call this%en%restore_to_default()
+      endif
+
     end subroutine restore_to_default
 
-  end module recursion_mod
+end module recursion_mod
   

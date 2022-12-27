@@ -151,12 +151,11 @@ module logger_mod
     ! DESCRIPTION:
     !> @brief Prints a message to screen with level ERROR
     !---------------------------------------------------------------------------
-    subroutine logger_error(this, message, file, line, interrupt)
+    subroutine logger_error(this, message, file, line)
         class(logger), intent(in) :: this
         character(len=*), intent(in) :: message
         character(len=*), intent(in) :: file
         integer, intent(in) :: line
-        logical, intent(in), optional :: interrupt
         call this%message(print("error") // message, .True., file, line)
     end subroutine logger_error
 

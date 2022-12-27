@@ -23,6 +23,7 @@
 module control_mod
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
+  use string_mod, only: sl
   implicit none
 
   private
@@ -97,7 +98,11 @@ module control_mod
     !> - \ref mext \f$= 2\f$: Broyden
     integer :: mext
 
+    ! TODO
     logical :: do_asd
+
+    ! TODO
+    integer :: asd_atom
 
     logical :: do_comom ! common_cnstr
 
@@ -127,7 +132,7 @@ module control_mod
     !> Description.
     !> 
     !> Allowable values: 'lanczos', 'chebyshev'
-    character :: recur
+    character(len=9) :: recur
 
     integer :: txc ! xcdata
     logical :: blockrec ! common_defs
@@ -140,6 +145,7 @@ module control_mod
     !real(rp), dimension(:,:), allocatable :: mom ! common_cnc
     integer :: njij ! common_c0
     integer :: nmdir
+    character(len=sl) :: fname
   contains
     procedure :: build_from_file
     procedure :: restore_to_default
@@ -190,10 +196,10 @@ contains
   !---------------------------------------------------------------------------
   subroutine build_from_file(this, fname)
     class(control),intent(inout) :: this
-    character(len=*), intent(in) :: fname
+    character(len=*), intent(in), optional :: fname
 
     ! variables associated with the object
-    integer :: lld,llsp,nlim,npold,nrec,nsp,idos,mext,txc,partype,terminator,njij
+    integer :: lld,llsp,nlim,npold,nsp,idos,mext,txc,partype,terminator,njij
     !integer, dimension(:), allocatable :: ifc                 
     real(rp) :: conca,concb,ruban
     logical :: lrot,incorb,do_asd,svac,blockrec,do_cochg,asd_jij,do_comom
@@ -201,12 +207,19 @@ contains
 
     ! variables associated with the reading processes
     integer :: iostatus, funit
+    character(len=sl) :: fname_
 
     namelist /control/ lld, llsp, nlim, npold, nsp,  &
     idos, lrot, incorb, do_asd, mext ,&
     svac, calctype, txc, blockrec, partype, do_cochg, asd_jij, terminator, conca,&
     concb, ruban, njij,do_comom !ifc, mom
 
+    if (present(fname)) then
+      fname_ = fname
+      this%fname = fname
+    else
+      fname_ = this%fname
+    endif
 
     ! Save previous values
     nlim = this%nlim
@@ -315,6 +328,7 @@ contains
     this%njij = 0   
     this%do_comom = .false.
     this%recur = 'lanczos'
+    this%fname = ''
   end subroutine restore_to_default
 
   !---------------------------------------------------------------------------
@@ -334,7 +348,7 @@ contains
     character(len=*),intent(in),optional :: file
     integer :: newunit
 
-    integer :: lld,llsp,nlim,npold,nrec,nsp,idos,mext,txc,partype,terminator,njij
+    integer :: lld,llsp,nlim,npold,nsp,idos,mext,txc,partype,terminator,njij
     real(rp) :: conca,concb,ruban
     logical :: lrot,incorb,do_asd,svac,blockrec,do_cochg,asd_jij,do_comom
     character :: calctype

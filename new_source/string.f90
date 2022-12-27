@@ -97,19 +97,18 @@ contains
   end subroutine dynamol_flush
 
   !> Convert integer to character string
-  function int2str(i) result(str)
+  function int2str(i,fmt) result(str)
     integer(ip),intent(in) :: i
+    character(len=*), intent(in), optional :: fmt
     character(len=il) :: str_temp
     character(len=:),allocatable :: str
 
-    write(str_temp,*) i
+    if (present(fmt)) then
+      write(str_temp,fmt) i
+    else
+      write(str_temp,*) i
+    endif
     str = trim(adjustl(str_temp))
-
-    !integer,intent(in) :: i
-    !character(len=floor(log(real(abs(i),wp))/log(10.0_rp))+2) :: str
-
-    !print *, floor(log(real(abs(i),wp))/log(10.0_rp))+2
-    !write(str,*) i
   end function int2str
 
   !> Test if a character string is an integer
@@ -200,12 +199,17 @@ contains
   end function lower
 
   ! Convert real to character string
-  function real2str(r) result(str)
+  function real2str(r,fmt) result(str)
     real(rp),intent(in) :: r
+    character(len=*), intent(in), optional :: fmt
     character(len=rl) :: str_temp
     character(len=:),allocatable :: str
 
-    write(str_temp,*) r
+    if(present(fmt)) then
+      write(str_temp,fmt) r
+    else
+      write(str_temp,*) r
+    endif
     str = trim(adjustl(str_temp))
   end function real2str
 
@@ -422,7 +426,7 @@ contains
   function endswith(string,substring)
     logical :: endswith
     character(len=*), intent(in) :: string, substring
-
+    endswith = trim(string(len(trim(string))-len(trim(substring))+1:)) == trim(substring)
   end function endswith
 
   !> checks if string starts with substring

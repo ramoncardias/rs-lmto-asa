@@ -23,10 +23,11 @@
 module lattice_mod
 
   use control_mod
-  use string_mod, only : clean_str
+  use string_mod, only : clean_str, sl
   use math_mod, only: cross_product
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
+  use symbolic_atom_mod, only: symbolic_atom, array_of_symbolic_atoms
   implicit none
 
   private
@@ -286,6 +287,7 @@ module lattice_mod
     integer, dimension(:), allocatable :: reduced_acr
 
     type(control), pointer :: control
+    type(symbolic_atom), dimension(:), allocatable :: symbolic_atoms
   contains
     procedure :: build_from_file
     procedure :: restore_to_default
@@ -319,15 +321,14 @@ contains
   !> @param[in] fname Namelist file
   !> @return type(lattice)
   !---------------------------------------------------------------------------
-  function constructor(fname,control_obj) result(obj)
+  function constructor(control_obj) result(obj)
     type(lattice) :: obj
     type(control), target, intent(in) :: control_obj
-    character(len=*), intent(in) :: fname
 
     obj%control => control_obj
     
     call obj%restore_to_default()
-    call obj%build_from_file(fname)
+    call obj%build_from_file()
   end function constructor
   
   
@@ -373,7 +374,7 @@ contains
   !---------------------------------------------------------------------------
   subroutine build_from_file(this,fname) 
     class(lattice),intent(inout) :: this
-    character(len=*),intent(in) :: fname
+    character(len=*),intent(in), optional :: fname
     ! Namelist for general parameters
     integer, dimension(:), allocatable :: iu, ib, irec
     real(rp), dimension(:), allocatable :: ct                 
@@ -392,6 +393,7 @@ contains
     integer :: nclu
     ! variables associated with the reading processes
     integer :: iostatus, funit
+    character(len=sl) :: fname_
 
     ! Namelist
     namelist /lattice/ crystal_sym, rc, a, izp, no, crd, ndim, npe,& ! Bulk parameters
@@ -399,6 +401,13 @@ contains
                        inclu, nclu, & ! Impurity varables 
                        alat, celldm, wav        ! General parameters 
 
+    if (present(fname)) then
+      fname_ = fname
+      this%control%fname = fname
+    else 
+      fname_ = this%control%fname
+    endif
+                       
     ! Save previous values
     ! Bulk initialization
     ndim = this%ndim
@@ -438,9 +447,9 @@ contains
     surftype = this%surftype
     nlay = this%nlay
 
-    open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
+    open(newunit=funit,file=fname_,action='read',iostat=iostatus,status='old')
     if(iostatus /= 0) then
-      write(error_unit,'("[",A,":",I0,"]: file ",A," not found")') __FILE__,__LINE__,trim(fname)
+      write(error_unit,'("[",A,":",I0,"]: file ",A," not found")') __FILE__,__LINE__,trim(fname_)
       error stop
     endif
                    
@@ -640,6 +649,7 @@ contains
     this%vol = abs(dot_product(a(:,3),cross_product(a(:,1),a(:,2))))*(this%alat**3)
     if(this%wav.eq.0) then
        this%wav = (this%vol/((16.0d0/3.0d0)*atan(1.0d0)*this%ntot))**(1.0d0/3.0d0)
+       write(*,*) 'wav', this%wav
     end if
     if(this%control%calctype=='B'.or.this%control%calctype=='S') this%nmax = 0
   end subroutine build_data
@@ -649,8 +659,9 @@ contains
   !> @brief
   !> Reset all members to default
   !---------------------------------------------------------------------------
-  subroutine restore_to_default(this)
+  subroutine restore_to_default(this,full)
     class(lattice) :: this
+    logical, intent(in), optional :: full
 
     this%ndim = 9900000
     this%npe = 49
@@ -663,6 +674,10 @@ contains
     allocate(this%izp(this%ndim),this%no(this%ndim))
     allocate(this%crd(3,this%ndim))
     allocate(this%inclu(this%nclu,3))
+
+    if (present(full) .and. full .and. associated(this%control)) then
+      call this%control%restore_to_default()
+    endif
 
   end subroutine restore_to_default
 
@@ -1253,6 +1268,7 @@ contains
       j = j+1
       this%atlist(j) = this%irec(i)
     end do
+    this%symbolic_atoms = array_of_symbolic_atoms(this%control%fname, this%ntype)
   end subroutine atomlist
 
   ! Local library
@@ -2365,7 +2381,6 @@ contains
   !> @param[in] file File name used to write namelist
   !---------------------------------------------------------------------------
   subroutine print_state_full(this,unit,file)
-    implicit none
     class(lattice), intent(in) :: this
 
     integer,intent(in),optional :: unit

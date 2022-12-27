@@ -24,7 +24,7 @@ module density_of_states_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
     use control_mod
     use lattice_mod
-    use self_mod
+    use energy_mod
     use symbolic_atom_mod
     use recursion_mod
     use precision_mod, only:rp
@@ -39,15 +39,15 @@ module density_of_states_mod
       real(rp), dimension(:,:,:), allocatable :: doscheb
 
       !> Recursion
-      type(recursion), pointer :: recursion
-      !> Self
-      type(self), pointer :: self
+      class(recursion), pointer :: recursion
       !> Symbolic atom
-      type(symbolic_atom), dimension(:), pointer :: symbolic_atom
+      class(symbolic_atom), dimension(:), pointer :: symbolic_atom
       !> Lattice
-      type(lattice), pointer :: lattice
+      class(lattice), pointer :: lattice
       !> Control
-      type(control), pointer :: control
+      class(control), pointer :: control
+      !> Energy
+      class(energy), pointer :: en
     contains
       procedure :: density
       procedure :: chebyshev_dos
@@ -62,14 +62,14 @@ module density_of_states_mod
 
 contains
 
-  function constructor(recursion_obj,self_obj) result(obj)
+  function constructor(recursion_obj,energy_obj) result(obj)
     type(dos) :: obj
-    type(recursion), target, intent(in) :: recursion_obj
-    type(self), target, intent(in) :: self_obj
+    class(recursion), target, intent(in) :: recursion_obj
+    class(energy), target, intent(in) :: energy_obj
 
     obj%recursion => recursion_obj
-    obj%self => self_obj
-    obj%symbolic_atom => recursion_obj%hamiltonian%symbolic_atom
+    obj%en => energy_obj
+    obj%symbolic_atom => recursion_obj%hamiltonian%charge%lattice%symbolic_atoms
     obj%lattice => recursion_obj%lattice
     obj%control => recursion_obj%lattice%control
 
@@ -96,18 +96,16 @@ contains
     class(dos), intent(inout) :: this
     ! Local variables
     real(rp), dimension(this%control%lld*2+2) :: kernel
-    real(rp), dimension(this%self%channels_ldos+10,0:this%control%lld*2+2) :: polycheb
-    real(rp), dimension(this%self%channels_ldos+10) :: w, wscale
+    real(rp), dimension(this%en%channels_ldos+10,0:this%control%lld*2+2) :: polycheb
+    real(rp), dimension(this%en%channels_ldos+10) :: w, wscale
     real(rp) :: wstep, eps, wmin, wmax, a, b
-    !complex(rp), dimension(this%lattice%nrec,18,18,this%self%channels_ldos+10) :: green
     integer :: i, j, k, l, m, n
     eps = 0.0001d0
-
     ! Defining rescaling coeficients
-    a = (this%self%energy_max-this%self%energy_min)/(2-0.3)
-    b = (this%self%energy_max+this%self%energy_min)/2
+    a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+    b = (this%en%energy_max+this%en%energy_min)/2
 
-    wscale(:) = (this%self%ene(:)-b)/a
+    wscale(:) = (this%en%ene(:)-b)/a
 
     ! Calculating the Jackson Kernel
     call jackson_kernel((this%control%lld)*2+2,kernel)
@@ -142,19 +140,19 @@ contains
         end do
       end do
       do l=1,18
-        this%doscheb(n,l,:) = this%doscheb(n,l,:)/((sqrt((a**2)-((this%self%ene(:)-b)**2)))*pi) 
+        this%doscheb(n,l,:) = this%doscheb(n,l,:)/((sqrt((a**2)-((this%en%ene(:)-b)**2)))*pi) 
         !do m=1,18
         !green(n,l,m,:) = green(n,l,m,:)/((sqrt((a**2)-((this%self%ene(:)-b)**2))))
         !end do
       end do
       do l=1,18
-        do i=1,this%self%channels_ldos+10
+        do i=1,this%en%channels_ldos+10
           if (isnan(this%doscheb(n,l,i))) this%doscheb(n,l,i)=0.0d0
         end do 
       end do
  
-      do i=1,this%self%channels_ldos+10
-        write(200+n,'(8f16.4)') this%self%ene(i), (this%doscheb(n,1,i)), sum(this%doscheb(n,2:4,i)), sum(this%doscheb(n,5:9,i)),&
+      do i=1,this%en%channels_ldos+10
+        write(200+n,'(8f16.4)') this%en%ene(i), (this%doscheb(n,1,i)), sum(this%doscheb(n,2:4,i)), sum(this%doscheb(n,5:9,i)),&
                                                   (this%doscheb(n,10,i)), sum(this%doscheb(n,11:13,i)), sum(this%doscheb(n,14:18,i)),&
                                                   sum(this%doscheb(n,1:18,i))
         !write(125+n,'(10f10.6)') this%self%ene(i), real(green(n,1,1,i)),real(green(n,2,2,i)),real(green(n,3,3,i)),real(green(n,4,4,i)),real(green(n,5,5,i)),&
@@ -172,19 +170,19 @@ contains
     class(dos), intent(inout) :: this
     ! Local variables
     real(rp), dimension(this%control%lld) :: kernel
-    real(rp), dimension(this%self%channels_ldos+10,0:this%control%lld) :: polycheb
-    real(rp), dimension(this%self%channels_ldos+10) :: w, wscale
+    real(rp), dimension(this%en%channels_ldos+10,0:this%control%lld) :: polycheb
+    real(rp), dimension(this%en%channels_ldos+10) :: w, wscale
     real(rp) :: wstep, eps, wmin, wmax, a, b
     real(rp), dimension(this%control%lld*2+2,5) :: mu_dum
-    complex(rp), dimension(this%lattice%nrec,18,18,this%self%channels_ldos+10) :: green
+    complex(rp), dimension(this%lattice%nrec,18,18,this%en%channels_ldos+10) :: green
     integer :: i, j, k, l, m, n
     eps = 0.0001d0
 
     ! Defining rescaling coeficients
-    a = (this%self%energy_max-this%self%energy_min)/(2-0.3)
-    b = (this%self%energy_max+this%self%energy_min)/2
+    a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+    b = (this%en%energy_max+this%en%energy_min)/2
 
-    wscale(:) = (this%self%ene(:)-b)/a
+    wscale(:) = (this%en%ene(:)-b)/a
 
     ! Calculating the Jackson Kernel
     call jackson_kernel(this%control%lld,kernel)
@@ -219,22 +217,22 @@ contains
         end do
       end do
       do l=1,18
-        this%doscheb(n,l,:) = this%doscheb(n,l,:)/((sqrt((a**2)-((this%self%ene(:)-b)**2)))*pi) 
+        this%doscheb(n,l,:) = this%doscheb(n,l,:)/((sqrt((a**2)-((this%en%ene(:)-b)**2)))*pi) 
         do m=1,18
-          green(n,l,m,:) = green(n,l,m,:)/((sqrt((a**2)-((this%self%ene(:)-b)**2))))
+          green(n,l,m,:) = green(n,l,m,:)/((sqrt((a**2)-((this%en%ene(:)-b)**2))))
         end do
       end do
       do l=1,18
-        do i=1,this%self%channels_ldos+10
+        do i=1,this%en%channels_ldos+10
           if (isnan(this%doscheb(n,l,i))) this%doscheb(n,l,i)=0.0d0
         end do 
       end do
  
-      do i=1,this%self%channels_ldos+10
-        write(200+n,'(8f16.4)') this%self%ene(i), (this%doscheb(n,1,i)), sum(this%doscheb(n,2:4,i)), sum(this%doscheb(n,5:9,i)),&
+      do i=1,this%en%channels_ldos+10
+        write(200+n,'(8f16.4)') this%en%ene(i), (this%doscheb(n,1,i)), sum(this%doscheb(n,2:4,i)), sum(this%doscheb(n,5:9,i)),&
                                                   (this%doscheb(n,10,i)), sum(this%doscheb(n,11:13,i)), sum(this%doscheb(n,14:18,i)),&
                                                   sum(this%doscheb(n,1:18,i))
-        write(125+n,'(10f10.6)') this%self%ene(i), real(green(n,1,1,i)),real(green(n,2,2,i)),real(green(n,3,3,i)),real(green(n,4,4,i)),real(green(n,5,5,i)),&
+        write(125+n,'(10f10.6)') this%en%ene(i), real(green(n,1,1,i)),real(green(n,2,2,i)),real(green(n,3,3,i)),real(green(n,4,4,i)),real(green(n,5,5,i)),&
                                                    &real(green(n,5,5,i)),real(green(n,6,6,i)),real(green(n,8,8,i)),aimag(green(n,9,9,i))  
       end do
     end do  ! End loop on self-consistent atoms
@@ -253,7 +251,7 @@ contains
     integer, intent(in) :: mdir ! Direction index
     integer, intent(in) :: ia ! Atom type
     ! Output
-    real(rp), dimension(18,this%self%channels_ldos+10), intent(out) :: tdens
+    real(rp), dimension(18,this%en%channels_ldos+10), intent(out) :: tdens
     ! Local variables
     integer :: icode,iii,k,l,ll1,nb,nbp1,nl,nt,eidx, ne, nq, ll_in, ifail, npts, nw
     real(rp) :: a1,a2,dens,emax,emin,eps,err, e_shift, e_canon, prefac
@@ -278,7 +276,7 @@ contains
     ll_in = this%control%lld
     ll_fail = ll_in
     nw = 10*this%lattice%ntype*this%control%lld
-    npts = this%self%channels_ldos+10
+    npts = this%en%channels_ldos+10
 
     do nl = 1,18
       do l = 1,this%control%lld
@@ -348,7 +346,7 @@ contains
             width(k) = width2(nl,k)
             weight(k) = weight2(nl,k)
           end do
-          e_shift=this%self%ene(eidx)/this%symbolic_atom(ia)%potential%dw_l(nl)-1.00d0*this%symbolic_atom(ia)%potential%cshi(nl)
+          e_shift=this%en%ene(eidx)/this%symbolic_atom(ia)%potential%dw_l(nl)-1.00d0*this%symbolic_atom(ia)%potential%cshi(nl)
           prefac=1.0d0
           bandedges(1)=edge(1)!-0.1
           bandedges(2)=edge(1)+width(1)!+0.1
@@ -362,9 +360,9 @@ contains
     end do
 
 
-   ! do eidx=1,npts
-   !    write(300,*) this%self%ene(eidx), sum(tdens(1:9,eidx)), sum(tdens(10:18,eidx))
-   ! end do
+    do eidx=1,npts
+       write(300,*) this%en%ene(eidx), sum(tdens(1:9,eidx)), sum(tdens(10:18,eidx))
+    end do
   end subroutine density
 
   !---------------------------------------------------------------------------
@@ -406,7 +404,7 @@ contains
 
   subroutine restore_to_default(this)
     class(dos), intent(inout) :: this
-    allocate(this%doscheb(this%lattice%nrec,18,this%self%channels_ldos+10))
+    allocate(this%doscheb(this%lattice%nrec,18,this%en%channels_ldos+10))
 
     this%doscheb(:,:,:) = 0.0d0 
   end subroutine
