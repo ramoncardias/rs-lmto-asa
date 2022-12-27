@@ -10,7 +10,7 @@ LFLAGS= -llapack -lblas
 endif
 endif
 OPTFLAGS=-g -fbacktrace -fcheck=all -cpp -Ofast -ffree-line-length-0 -fpic 
-OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o
+OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o energy.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o xc.o 
 CPPFLAGS=-DDEBUG -DCOLOR
 FLAGS=${OPTFLAGS} ${CPPFLAGS}
 
@@ -35,28 +35,34 @@ run: ${EXE}
 	${FC} ${FLAGS} -c $<
 
 # dependencies
-safe_alloc.o: logger.o string.o report.o
-logger.o: string.o face.o
+safe_alloc.o: string.o report.o
+logger.o: string.o face.o report.o
 string.o: precision.o
 math.o: precision.o
-calculation.o: self.o lattice.o control.o charge.o symbolic_atom.o hamiltonian.o recursion.o string.o green.o density_of_states.o bands.o
+calculation.o: self.o lattice.o control.o charge.o symbolic_atom.o hamiltonian.o recursion.o string.o green.o density_of_states.o bands.o mix.o
 charge.o: lattice.o precision.o math.o string.o self.o
-self.o: math.o lattice.o control.o precision.o
-lattice.o: string.o math.o control.o precision.o
+self.o: math.o lattice.o control.o precision.o symbolic_atom.o logger.o xc.o
+energy.o: lattice.o
+lattice.o: string.o math.o control.o precision.o symbolic_atom.o
 # potential.o: lattice.o precision.o string.o
 main.o: calculation.o precision.o os.o logger.o
-element.o: globals.o precision.o
-potential.o: globals.o precision.o
-symbolic_atom.o: element.o potential.o lattice.o
+element.o: globals.o precision.o logger.o string.o
+potential.o: globals.o precision.o logger.o string.o
+symbolic_atom.o: element.o potential.o
 hamiltonian.o: symbolic_atom.o element.o potential.o charge.o lattice.o precision.o math.o
-recursion.o: hamiltonian.o lattice.o
-green.o: self.o control.o lattice.o symbolic_atom.o recursion.o density_of_states.o precision.o math.o
-density_of_states.o: control.o lattice.o self.o symbolic_atom.o recursion.o precision.o math.o
-bands.o: control.o self.o green.o lattice.o symbolic_atom.o density_of_states.o precision.o math.o
-mix.o: precision.o
+recursion.o: hamiltonian.o lattice.o energy.o
+green.o: energy.o control.o lattice.o symbolic_atom.o recursion.o density_of_states.o precision.o math.o
+density_of_states.o: control.o lattice.o energy.o symbolic_atom.o recursion.o precision.o math.o
+bands.o: control.o energy.o green.o lattice.o symbolic_atom.o density_of_states.o precision.o math.o
+mix.o: precision.o string.o control.o lattice.o symbolic_atom.o
 namelist_generator.o: precision.o string.o
 timer.o: precision.o string.o globals.o
 report.o: precision.o string.o
+xc.o: control.o logger.o string.o precision.o math.o
+
+globals.o: globals.f90
+	#@(awk -i inplace -f .makefile_scripts/global_root_folder_filler.awk globals.f90)
+	${FC} ${FLAGS} -c $<
 
 clean:
 	rm -rdf ${EXE} *.mod *.o *.so *.x
