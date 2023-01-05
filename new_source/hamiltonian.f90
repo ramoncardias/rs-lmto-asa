@@ -46,8 +46,10 @@ module hamiltonian_mod
     complex(rp), dimension(:,:,:,:), allocatable :: hmag 
     !> Hamiltonian built in ham0m_nc (description to be improved
     complex(rp), dimension(:,:,:), allocatable :: hhmag
-    ! > Charge 
-    type(charge), pointer :: charge
+    !> Charge 
+    class(charge), pointer :: charge
+    !> Lattice
+    class(lattice), pointer :: lattice
   contains
     procedure :: build_lsham
     procedure :: build_bulkham
@@ -77,6 +79,7 @@ contains
     type(charge), target, intent(in) :: charge_obj
 
     obj%charge => charge_obj
+    obj%lattice => charge_obj%lattice
 
     call obj%restore_to_default()
   end function constructor

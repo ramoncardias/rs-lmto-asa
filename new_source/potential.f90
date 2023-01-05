@@ -41,6 +41,8 @@ module potential_mod
         real(rp), dimension(:,:), allocatable :: center_band
         real(rp), dimension(:,:), allocatable :: width_band
         real(rp), dimension(:,:), allocatable :: gravity_center 
+        real(rp), dimension(:,:), allocatable :: shifted_band ! center_band - gravity_center
+        real(rp), dimension(:,:), allocatable :: obar 
         !> Potential parameters treated internally in the code
         !> cx -> center of the band
         !> wx -> width of the band
@@ -282,9 +284,13 @@ contains
         allocate(this%c(0:this%lmax,2),this%enu(0:this%lmax,2),this%ppar(0:this%lmax,2),this%qpar(0:this%lmax,2),&
                  this%srdel(0:this%lmax,2),this%vl(0:this%lmax,2),this%pnu(0:this%lmax,2))
 
+        allocate(this%shifted_band(this%lmax+1,2),this%obar(this%lmax+1,2))
+
         this%ws_r = 0.0d0
         this%center_band(:,:) = 0.0d0
         this%width_band(:,:) = 0.0d0
+        this%shifted_band(:,:) = 0.0d0
+        this%obar(:,:) = 0.0d0
         this%sumec = 0.0d0
         this%sumev = 0.0d0
         this%etot = 0.0d0

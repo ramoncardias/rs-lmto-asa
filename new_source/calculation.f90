@@ -211,7 +211,7 @@ contains
     call lattice_obj%newclu()
     call lattice_obj%structb()
     call lattice_obj%atomlist()
-    self_obj = self(lattice_obj)
+    !self_obj = self(lattice_obj)
     energy_obj = energy(lattice_obj)
     charge_obj = charge(lattice_obj)
     call charge_obj%impmad
@@ -227,7 +227,7 @@ contains
     if(this%verbose) then
       call control_obj%print_state()
       call lattice_obj%print_state()
-      call self_obj%print_state()
+      !call self_obj%print_state()
       call charge_obj%print_state()
     endif
 
@@ -262,7 +262,7 @@ end subroutine pre_processing_newclubulk
     call lattice_obj%newclu()
     call lattice_obj%structb()
     call lattice_obj%atomlist
-    self_obj = self(lattice_obj)
+    !self_obj = self(lattice_obj)
     energy_obj = energy(lattice_obj)
     charge_obj = charge(lattice_obj)
     call charge_obj%impmad
@@ -278,7 +278,7 @@ end subroutine pre_processing_newclubulk
     if(this%verbose) then
       call control_obj%print_state()
       call lattice_obj%print_state()
-      call self_obj%print_state()
+      !call self_obj%print_state()
       call charge_obj%print_state()
     endif
 
@@ -294,7 +294,7 @@ end subroutine pre_processing_newclusurf
 
     type(control), target :: control_obj
     type(lattice), target :: lattice_obj
-    type(self), target :: self_obj
+    !type(self), target :: self_obj
     type(energy), target :: energy_obj
     type(charge), target :: charge_obj
     type(hamiltonian), target :: hamiltonian_obj
@@ -312,7 +312,7 @@ end subroutine pre_processing_newclusurf
     call lattice_obj%build_surf()
     call lattice_obj%structb()
     call lattice_obj%atomlist()
-    self_obj = self(lattice_obj)
+    !self_obj = self(lattice_obj)
     energy_obj = energy(lattice_obj)
     charge_obj = charge(lattice_obj)
     call charge_obj%build_alelay
@@ -328,7 +328,7 @@ end subroutine pre_processing_newclusurf
     if(this%verbose) then
       call control_obj%print_state()
       call lattice_obj%print_state()
-      call self_obj%print_state()
+      !call self_obj%print_state()
       call charge_obj%print_state()
     endif
 
@@ -359,20 +359,17 @@ end subroutine pre_processing_buildsurf
 
  
     ! Constructing control object
-    call control_obj%restore_to_default
-    call control_obj%build_from_file(this%fname)
-    !control_obj = control(this%fname)
+    !call control_obj%restore_to_default
+    !call control_obj%build_from_file(this%fname)
+    control_obj = control(this%fname)
 
     ! Constructing lattice object
     lattice_obj = lattice(control_obj)
-    ! Constructing the charge object
-    charge_obj = charge(lattice_obj)
 
     ! Running the pre-calculation
     call cpu_time(start)
     call lattice_obj%build_data()
     call lattice_obj%bravais()
-    call charge_obj%bulkmat()
     call lattice_obj%structb()
     call cpu_time(finish)
     print '("Pre-processing time = ",f10.3," seconds.")',(finish-start)!/32
@@ -380,24 +377,23 @@ end subroutine pre_processing_buildsurf
     ! Creating the symbolic_atom object
     call lattice_obj%atomlist()
 
+    ! Constructing the charge object
+    charge_obj = charge(lattice_obj)
+    call charge_obj%bulkmat()
+
+
     ! Constructing mixing object
-    mix_obj = mix(lattice_obj)
+    mix_obj = mix(lattice_obj,charge_obj)
 
     ! Creating the energy object
     energy_obj = energy(lattice_obj)
-    call energy_obj%e_mesh()
 
     ! Creating hamiltonian object
     hamiltonian_obj = hamiltonian(charge_obj)
-    call hamiltonian_obj%build_bulkham
     !call hamiltonian_obj%build_lsham
 
     ! Creating recursion object
     recursion_obj = recursion(hamiltonian_obj,energy_obj)
-    call cpu_time(start)
-    call recursion_obj%recur()
-    call cpu_time(finish)
-    print '("Recursion time = ",f10.3," seconds.")',(finish-start)!/32
 
     ! Creating density of states object
     dos_obj = dos(recursion_obj,energy_obj)
@@ -413,17 +409,16 @@ end subroutine pre_processing_buildsurf
 
     ! Creating Green function object
     green_obj = green(dos_obj)
-    call green_obj%sgreen()
+!    call green_obj%sgreen()
 
     ! Creating bands object
     bands_obj = bands(green_obj)
-    call bands_obj%calculate_fermi()
-    call bands_obj%calculate_moments()
+!    call bands_obj%calculate_fermi()
+!    call bands_obj%calculate_moments()
 !    call bands_obj%calculate_moments_chebgauss()
 
     ! Creating the self object
-    self_obj = self(lattice_obj)
-    QSL = self_obj%lmtst(lattice_obj%symbolic_atoms(1))
+    self_obj = self(bands_obj,mix_obj)
     call self_obj%run()
 
     if(this%verbose) then
@@ -431,7 +426,7 @@ end subroutine pre_processing_buildsurf
       call lattice_obj%print_state()
       call self_obj%print_state()
       call charge_obj%print_state()
-      call print_state(lattice_obj%symbolic_atoms)
+      call save_state(lattice_obj%symbolic_atoms)
     endif
 
 end subroutine pre_processing_bravais

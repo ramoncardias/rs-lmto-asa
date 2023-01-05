@@ -28,7 +28,15 @@ module self_mod
   use string_mod, only: real2str, int2str
   use control_mod
   use lattice_mod
+  use charge_mod
   use xc_mod
+  use recursion_mod
+  use density_of_states_mod
+  use green_mod
+  use bands_mod 
+  use energy_mod
+  use hamiltonian_mod
+  use mix_mod
   use math_mod
   use precision_mod, only: rp
   implicit none
@@ -39,8 +47,26 @@ module self_mod
   type, public :: self
     !> Lattice
     class(lattice), pointer :: lattice
+    !> Charge
+    class(charge), pointer :: charge
+    !> Control
+    class(control), pointer :: control
     !> Symbolic atom
     class(symbolic_atom), dimension(:), pointer :: symbolic_atom
+    !> Recursion
+    class(recursion), pointer :: recursion
+    !> Density of states
+    class(dos), pointer :: dos
+    !> Bands
+    class(bands), pointer :: bands
+    !> Energy
+    class(energy), pointer :: en
+    !> Mix
+    class(mix), pointer :: mix
+    !> Hamiltonian
+    class(hamiltonian), pointer :: hamiltonian
+    !> Green
+    class(green), pointer :: green
 
     !TODO: check description
     !> If true treats all atoms as inequivalents. Default: true.
@@ -77,13 +103,6 @@ module self_mod
     !> 
     !> Default: true.
     logical :: mix_all
-
-    !> Mixture occupation in self-consistent calculation. Default: 0.01.
-    !> 
-    !> Mixture occupation in self-consistent calculation.
-    !> 
-    !> Default: 0.01.
-    real(rp), dimension(:), allocatable :: mix
 
     ! Magnetic mixing parameters
 
@@ -175,6 +194,8 @@ module self_mod
     ! TODO max ws
     ! User in lmtst: MAKE POTENTIAL PARAMETERS TO SAME DNU VALUES
     real(rp) :: ws_max
+    !> Logical variable to check if the calculation is converged.
+    logical :: converged
 
   contains
     procedure :: build_from_file
@@ -184,6 +205,7 @@ module self_mod
     procedure :: print_state_full
     procedure :: run
     procedure :: lmtst
+    procedure :: is_converged
     procedure, private :: atomsc
     procedure, private :: ftype
     procedure, private :: newrho
@@ -209,12 +231,22 @@ contains
   !> @param[in] lattice_obj Pointer to system's lattice
   !> @return type(self)
   !---------------------------------------------------------------------------
-  function constructor(lattice_obj) result(obj)
+  function constructor(bands_obj,mix_obj) result(obj)
     type(self) :: obj
-    type(lattice), target, intent(in) :: lattice_obj
+    type(bands), target, intent(in) :: bands_obj
+    type(mix), target, intent(in) :: mix_obj
 
-    obj%lattice => lattice_obj
-    obj%symbolic_atom => lattice_obj%symbolic_atoms
+    obj%lattice => bands_obj%lattice
+    obj%charge => bands_obj%recursion%hamiltonian%charge
+    obj%control => bands_obj%lattice%control
+    obj%symbolic_atom => bands_obj%symbolic_atom 
+    obj%recursion => bands_obj%recursion
+    obj%dos => bands_obj%dos
+    obj%bands => bands_obj
+    obj%en => bands_obj%en
+    obj%mix => mix_obj
+    obj%hamiltonian => bands_obj%recursion%hamiltonian
+    obj%green => bands_obj%green
 
     call obj%restore_to_default()
     call obj%build_from_file()
@@ -228,7 +260,6 @@ contains
   subroutine destructor(this)
     type(self) :: this
     if(allocated(this%ws)) deallocate(this%ws)
-    if(allocated(this%mix)) deallocate(this%mix)
     if(allocated(this%mixmag)) deallocate(this%mixmag)
     if(allocated(this%rb)) deallocate(this%rb)
   end subroutine destructor
@@ -257,7 +288,7 @@ contains
     namelist /self/ ws_all, all_inequivalent, &
     mix_all, magnetic_mixing, mixmag_all, freeze, orbital_polarization, &
     rigid_band, rb, nstep, init, & 
-    conv_thr, ws, mix, mixmag
+    conv_thr, ws, mixmag
 
     ! Save previous values
     all_inequivalent = this%all_inequivalent
@@ -272,19 +303,11 @@ contains
     nstep = this%nstep
     conv_thr = this%conv_thr
 
-    call move_alloc(this%mix, mix)
     call move_alloc(this%ws, ws)
     call move_alloc(this%mixmag, mixmag)
     call move_alloc(this%rb, rb)
 
     ! Check if size is right
-    if(size(mix) .ne. this%lattice%nrec) then
-      call g_logger%error('resizing array "mix"',__FILE__,__LINE__)
-      call g_logger%error('from '//int2str(size(mix))//' to '//int2str(this%lattice%nrec),__FILE__,__LINE__)
-      call g_logger%error('If this variable is not in the namelist, it may cause errors',__FILE__,__LINE__)
-      deallocate(mix)
-      allocate(mix(this%lattice%nrec))
-    endif
     if(size(mixmag) .ne. this%lattice%nrec) then
       call g_logger%error('resizing array "mixmag"',__FILE__,__LINE__)
       call g_logger%error('from '//int2str(size(mixmag))//' to '//int2str(this%lattice%nrec),__FILE__,__LINE__)
@@ -336,12 +359,6 @@ contains
     
     ! Mixing parameters
     this%mix_all = mix_all
-    if( mix_all ) then
-      allocate(this%mix(1))
-      this%mix(1) = mix(1)
-    else
-      call move_alloc(mix, this%mix)
-    endif
     
     ! Magnetic mixing parameters
     this%magnetic_mixing = magnetic_mixing
@@ -395,8 +412,6 @@ contains
     
     ! Mixing parameters
     this%mix_all = .true.
-    allocate(this%mix(this%lattice%nrec))
-    this%mix(:) = 0.01
     
     ! Magnetic mixing parameters
     this%magnetic_mixing = .false.
@@ -448,7 +463,6 @@ contains
     print*, ''
     print*, '[Mixing Parameters]'
     print*, 'mix_all ', this%mix_all
-    print*, 'mix     ', this%mix
     print*, ''
     print*, '[Magnetic Mixing Parameters]'
     print*, 'magnetic_mixing ', this%magnetic_mixing
@@ -484,14 +498,14 @@ contains
     real(rp) :: conv_thr
     logical :: ws_all, rigid_band, orbital_polarization, mixmag_all, mix_all, magnetic_mixing, freeze, all_inequivalent
     integer :: nstep, init
-    real(rp), dimension(:), allocatable :: ws, mixmag, mix
+    real(rp), dimension(:), allocatable :: ws, mixmag
     integer, dimension(:), allocatable :: rb
 
     namelist /self/ &
     conv_thr, ws_all, rigid_band, orbital_polarization,&
     mixmag_all, mix_all, magnetic_mixing, freeze, &
     all_inequivalent, nstep, init, ws, mixmag, &
-    mix, rb
+    rb
 
     ! scalar
 
@@ -520,12 +534,6 @@ contains
       mixmag = this%mixmag
     else
       allocate(mixmag(0))
-    endif
-    if(allocated(this%mix)) then
-      allocate(mix,mold=this%mix)
-      mix = this%mix
-    else
-      allocate(mix(0))
     endif
     if(allocated(this%rb)) then
       allocate(rb,mold=this%rb)
@@ -551,13 +559,13 @@ contains
     real(rp) :: conv_thr
     logical :: ws_all, rigid_band, orbital_polarization, mixmag_all, mix_all, magnetic_mixing, freeze, all_inequivalent
     integer :: nstep, init
-    real(rp), dimension(:), allocatable :: ws, mixmag, mix
+    real(rp), dimension(:), allocatable :: ws, mixmag
     integer, dimension(:), allocatable :: rb
 
     namelist /self/ ws_all, all_inequivalent, &
     mix_all, magnetic_mixing, mixmag_all, freeze, orbital_polarization, &
     rigid_band, rb, nstep, init,& 
-    conv_thr, ws, mix, mixmag
+    conv_thr, ws, mixmag
 
 
     ! scalar
@@ -587,12 +595,6 @@ contains
     else
       allocate(mixmag(0))
     endif
-    if(allocated(this%mix)) then
-      allocate(mix,mold=this%mix)
-      mix = this%mix
-    else
-      allocate(mix(0))
-    endif
     if(allocated(this%rb)) then
       allocate(rb,mold=this%rb)
       rb = this%rb
@@ -607,21 +609,117 @@ contains
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
   !> @brief
-  !> TODO
+  !> Performs the self-consistent calculation.
   !>
-  !> TODO
+  !> Performs the self-consistent calculation.
   !---------------------------------------------------------------------------
   subroutine run(this)
     class(self), intent(inout) :: this
-    integer :: i
+    integer :: i, ia, niter
+    real(rp), dimension(6) :: QSL
 
-    ! Saving the total energy
-    this%esumn = sum(this%symbolic_atom(:)%potential%etot)
-    this%esum = this%esumn
-
-
+    !===========================================================================
+    !                              BEGIN SCF LOOP
+    !===========================================================================
+    niter = 0
+    do i=1,this%nstep 
+      !=========================================================================
+      !                        PERFORM THE RECURSION           
+      !=========================================================================
+      call g_logger%info('Perform recursion at step '//int2str(i),__FILE__,__LINE__)  
+      select case(this%control%calctype)
+        case('B')
+          do ia=1,this%lattice%nrec
+            call this%symbolic_atom(ia)%build_pot() ! Build the potential matrix
+          end do
+          call this%hamiltonian%build_bulkham() ! Build the bulk Hamiltonian
+        case('S')
+          call g_logger%fatal('Surface calculation not implemented!',__FILE__,__LINE__)
+        case('I')
+          call g_logger%fatal('Imputiry calculation not implemented!',__FILE__,__LINE__)
+      end select
+      select case(this%control%recur)
+        case('lanczos')
+          call this%recursion%recur()  
+        case('chebyshev')
+          call g_logger%fatal('Chebvshev recursion not implemented!',__FILE__,__LINE__)
+      end select
+      !=========================================================================
+      !               SAVE THE TOTAL ENERGY FROM PREVIOUS ITERATION
+      !=========================================================================
+      this%esumn = sum(this%symbolic_atom(:)%potential%etot)
+      this%esum = this%esumn
+      !=========================================================================
+      !            SAVE THE PARAMETERS QL AND PL TO BE MIXED LATER
+      !=========================================================================
+      call this%mix%save_to('old') ! Save to qia_old to mix with qia_new.
+      !=========================================================================
+      !      CALCULATE THE DENSITY OF STATES AND THE NEW MOMENT BANDS QL
+      !=========================================================================
+      call g_logger%info('Calculating the density of states and the new moment bands',__FILE__,__LINE__)
+      call this%en%e_mesh() ! Solve the energy mesh
+      select case(this%control%recur)
+        case('lanczos')
+          call this%green%sgreen() ! Calculate the density of states using the continued fraction 
+        case('chebyshev')
+          call g_logger%fatal('Chebvshev recursion not implemented!',__FILE__,__LINE__)
+      end select
+      call this%bands%calculate_fermi() ! Calculate the fermi energy
+      call this%bands%calculate_moments() ! Integrate the DOS and calculate the band momends QL
+      call this%bands%calculate_pl() ! Calculate the PL using the read/previous potential parameters (ort)
+      call this%mix%save_to('new') ! Save the calculated PL and QL into the mix%qia_new 
+      !=========================================================================
+      !                   MIX OLD AND NEW CALCULATED PL AND QL
+      !=========================================================================
+      call this%mix%mixpq(this%mix%qia_old,this%mix%qia_new) ! Mix mix%qia_new with mix%qia_old and save into mix%qia
+      !=========================================================================
+      !         CALCULATE THE MADELUNG POTENTIAL (BULK ONLY IMPLEMENTED)
+      !=========================================================================
+      select case(this%control%calctype)
+        case('B')
+          call this%charge%bulkpot() 
+        case('S')
+          call g_logger%fatal('Surface calculation not implemented!',__FILE__,__LINE__)
+        case('I') 
+          call g_logger%fatal('Imputiry calculation not implemented!',__FILE__,__LINE__)
+      end select
+      !=========================================================================
+      !                        SAVE MIXED PARAMETERS 
+      !=========================================================================
+      call this%mix%save_to('current') ! Save mixed parameters mix%qia into potential%pl and potential%ql
+      !=========================================================================
+      !                       MAKE SFC ATOMIC SPHERE                   
+      !=========================================================================
+      do ia=1,this%lattice%nrec
+        qsl = this%lmtst(this%symbolic_atom(ia)) ! Makes the atomic sphere self-consistent and caltulate the orthogonal pottential parameters
+      end do
+      !=========================================================================
+      !      TRANSFORM POTENTIAL BASIS FROM ORTHOGONAL TO TIGHT-BINDING
+      !=========================================================================
+      do ia=1,this%lattice%nrec
+        call this%symbolic_atom(ia)%predls() ! Transforms the potential from orthogonal to tight-binding basis
+      end do
+      !=========================================================================
+      !                TEST IF THE CALCULATION IS CONVERGED                       
+      !=========================================================================
+      this%converged = this%is_converged(this%mix%delta)
+      if(this%converged)then
+        call g_logger%info('Converged!'//real2str(this%mix%delta),__FILE__,__LINE__)
+        exit
+      else
+        call g_logger%info('Not converged! Diff= '//real2str(this%mix%delta),__FILE__,__LINE__)
+        niter = niter+1
+      end if
+    end do
   end subroutine run
 
+  function is_converged(this,delta_en) result(l)
+    class(self), intent(inout) :: this
+    real(rp), intent(in) :: delta_en
+    logical :: l
+     
+    l = delta_en<this%conv_thr
+  end function is_converged
   !==============================================================================
   !----- FROM HERE WE HAVE SUBROUTINES AND FUCTIONS RAW COPIED FROM OLD CODE ----
   !==============================================================================
@@ -646,7 +744,7 @@ contains
     integer :: LMAX, NSP
     integer :: ISP, LP1, I, M, L
  
-    call g_logger%debug(atom%element%symbol,__FILE__,__LINE__)
+    call g_logger%info(atom%element%symbol,__FILE__,__LINE__)
     
     call this%atomsc(atom,v,rofi,"RHO")
 
@@ -722,7 +820,7 @@ contains
     xc_obj = xc(this%lattice%control)
     b = atom%B()
 
-    call g_logger%debug('XC functional: '//trim(xc_obj%TXCH)//' '//int2str(xc_obj%txc)//real2str(B),__FILE__,__LINE__)
+    call g_logger%info('XC functional: '//trim(xc_obj%TXCH)//' '//int2str(xc_obj%txc)//real2str(B),__FILE__,__LINE__)
 
     lmax = atom%potential%lmax
     niter = 80

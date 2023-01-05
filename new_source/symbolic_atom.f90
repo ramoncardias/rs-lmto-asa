@@ -25,6 +25,8 @@ module symbolic_atom_mod
     use potential_mod, only: potential
     use string_mod, only: sl, replace, endswith
     use precision_mod, only: rp
+    use potential_mod 
+    use math_mod
     implicit none
 
     private
@@ -74,6 +76,8 @@ module symbolic_atom_mod
         procedure :: mesh_grid_size
         procedure :: B
         procedure :: rho0
+        procedure :: predls
+        procedure :: build_pot
     end type symbolic_atom
 
     interface symbolic_atom
@@ -107,13 +111,6 @@ contains
         call obj%restore_to_default()
         obj%element = element(label,database)
         obj%potential = potential(label,database)
-
-        ! Initial guess for the Pl's potential
-        !  do i=1,2 ! loop on spin channel
-        !    obj%potential%pl(1,i) = obj%element%num_quant_s + 0.5d0
-        !    obj%potential%pl(2,i) = obj%element%num_quant_p + 0.5d0
-        !    obj%potential%pl(3,i) = obj%element%num_quant_d + 0.5d0
-        !  end do
     end function constructor
     
     !---------------------------------------------------------------------------
@@ -147,7 +144,73 @@ contains
         call this%potential%restore_to_default()
     end subroutine restore_to_default
 
-    
+    subroutine build_pot(this)
+      class(symbolic_atom), intent(inout) :: this
+      integer :: i
+
+      ! Setting the potential parameters 
+      ! Imaginary part is set to 0
+      ! kind is rp (same as real part)
+      this%potential%cx(1,:) = cmplx(this%potential%center_band(1,:),0,rp)
+      this%potential%wx(1,:) = cmplx(this%potential%width_band(1,:),0,rp)
+      do i = 2,4
+        this%potential%cx(i,:) = cmplx(this%potential%center_band(2,:),0,rp)
+        this%potential%wx(i,:) = cmplx(this%potential%width_band(2,:),0,rp)
+      end do
+      do i = 5,9
+        this%potential%cx(i,:) = cmplx(this%potential%center_band(3,:),0,rp)
+        this%potential%wx(i,:) = cmplx(this%potential%width_band(3,:),0,rp)
+      end do
+               
+      this%potential%cx0(:) = 0.5d0*(this%potential%cx(:,1)+this%potential%cx(:,2))
+      this%potential%cx1(:) = 0.5d0*(this%potential%cx(:,1)-this%potential%cx(:,2))
+      this%potential%wx0(:) = 0.5d0*(this%potential%wx(:,1)+this%potential%wx(:,2))
+      this%potential%wx1(:) = 0.5d0*(this%potential%wx(:,1)-this%potential%wx(:,2))
+    end subroutine build_pot
+
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> Transform the potential parameters from the orthogonal to the tight-binding representation.
+    !>
+    !> Transform the potential parameters from the orthogonal to the tight-binding representation. 
+    !> @param[in] class potential variable
+    !---------------------------------------------------------------------------
+    subroutine predls(this)
+      class(symbolic_atom), intent(inout) :: this
+      real(rp) :: x, y, wow, vmad
+      real(rp), dimension(this%potential%lmax+1,2) :: dele, qi, del, q, c, enu
+      real(rp), dimension(3) :: qm
+      integer :: i, j, lmax 
+      
+      wow = 1.0d0 ! WS average equals atomic WS. Need to fix/generalize 
+      lmax = this%potential%lmax
+      enu(:,:) = this%potential%enu(0:lmax,:)
+      c(:,:) = this%potential%c(0:lmax,:)
+      del(:,:) = this%potential%srdel(0:lmax,:)
+      q(:,:) = this%potential%qpar(0:lmax,:) 
+      vmad = this%potential%vmad
+      lmax = this%potential%lmax
+      qm(:) = qm_canonical(:) 
+
+      do J = 1,2
+         do I = 1,lmax+1
+            DELE(I,J) = DEL(I,J) * WOW**(0.5d0-I)
+            QI(I,J) = Q(I,J) * WOW**(1-2*I)
+            X = 1 - ((QI(I,J)-QM(I))*(C(I,J)-ENU(I,J))/DELE(I,J)/DELE(I,J))
+            Y = (QI(I,J)-QM(I)) / &
+               (((C(I,J)-ENU(I,J))*(QI(I,J)-QM(I)))-(DELE(I,J)*DELE(I,J)))
+            ! Saving parameters into the tight-binding representation
+            this%potential%center_band(i,j)=(C(I,J)-ENU(I,J))*X+ENU(I,J)+VMAD
+            this%potential%shifted_band(i,j)=(C(I,J)-ENU(I,J))*X
+            this%potential%width_band(i,j) = DELE(I,J) * X
+            this%potential%obar = Y
+            write(1001,*) this%potential%center_band, this%potential%width_band
+         end do
+      end do
+
+    end subroutine predls
+
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
     !> @brief
@@ -208,7 +271,7 @@ contains
 
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
-    !> @brief
+
     !> TODO
     !>
     !> TODO
@@ -265,8 +328,8 @@ contains
         do ir = 1,nr
             rho0(ir,1) = rho0(ir,1) * fac
             rho0(ir,2) = rho0(ir,1)
-            write(101,*) ir, rho0(ir,1)
-            write(102,*) ir, rho0(ir,2)
+            !write(101,*) ir, rho0(ir,1)
+            !write(102,*) ir, rho0(ir,2)
         end do
     end function rho0
 

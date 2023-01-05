@@ -23,6 +23,7 @@
 module charge_mod
 
   use lattice_mod
+  use symbolic_atom_mod, only: symbolic_atom
   use string_mod, only: sl
   use math_mod, only: pi, sqrt_pi, cross_product, ang2au, distance, angle, pos, erodrigues, normalize
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
@@ -33,6 +34,11 @@ module charge_mod
 
   !> Module's main structure
   type, public :: charge 
+    !> Lattice
+    class(lattice), pointer :: lattice
+    !> Symbolic atom
+    class(symbolic_atom), dimension(:), pointer :: symbolic_atom
+
     !> Bulkmat variables
     real(rp), dimension(:), allocatable :: w 
     !> Lattice distortion paramaters for bulkmat. Default is 1 for no distortion
@@ -77,18 +83,22 @@ module charge_mod
     integer :: nq3        
     !> Numbers for surfmat
     integer :: nr0, numr, numg, numvr, numvg   
+    !> Charge neutrality
+    real(rp), dimension(:), allocatable :: dq
+    !> Charge transfer
+    real(rp) :: cht, trq
+    !> Mix pot
+    real(rp) :: vmix
 
     !> Impmat variables
     !> Impurity eletrostatic potential
     real(rp), dimension(:,:), allocatable :: amad
     !> Wigner Seitz radius per atom shell considered to receive charge
     real(rp), dimension(:), allocatable :: wsimp 
-
-    type(lattice), pointer :: lattice
-
   contains
     procedure :: build_from_file
     procedure :: restore_to_default
+    procedure :: bulkpot
     procedure :: bulkmat
     procedure :: surfmat
     procedure :: build_alelay
@@ -117,7 +127,8 @@ contains
     type(lattice), target, intent(in) :: lattice_obj
 
     obj%lattice => lattice_obj
-    
+    obj%symbolic_atom => lattice_obj%symbolic_atoms
+
     call obj%restore_to_default()
     call obj%build_from_file()
   end function constructor
@@ -170,6 +181,7 @@ contains
     if(allocated(this%akz)) deallocate(this%akz)
     if(allocated(this%dr)) deallocate(this%dr)
     if(allocated(this%dg)) deallocate(this%dg)
+    if(allocated(this%dq)) deallocate(this%dq)
   end subroutine destructor
 
   !---------------------------------------------------------------------------
@@ -184,12 +196,12 @@ contains
     character(len=*), intent(in), optional :: fname
     character(len=sl) :: fname_
     ! Namelist variables
-    real(rp) :: gx, gy, gz, gt
+    real(rp) :: gx, gy, gz, gt, vmix
     real(rp), dimension(:), allocatable :: wssurf
     ! Local variables
     integer :: iostatus, funit
     ! Namelist
-    namelist /charge/ gx, gy, gz, gt, wssurf
+    namelist /charge/ gx, gy, gz, gt, wssurf, vmix
 
     if (present(fname)) then
       fname_ = fname
@@ -203,6 +215,7 @@ contains
     gy = this%gy
     gz = this%gz
     gt = this%gt
+    vmix = this%vmix
 
     if(size(this%wssurf).ne.this%lattice%nbas)then
       deallocate(this%wssurf)
@@ -229,7 +242,7 @@ contains
     this%gy = gy
     this%gz = gz
     this%gt = gt
-
+    this%vmix = vmix
     call move_alloc(wssurf,this%wssurf)
   end subroutine build_from_file
 
@@ -241,8 +254,10 @@ contains
   subroutine restore_to_default(this)
     class(charge), intent(inout) :: this
 
-    allocate(this%wssurf(this%lattice%nbas))
+    allocate(this%wssurf(this%lattice%nbas),this%dq(this%lattice%nrec))
 
+    this%dq(:) = 0.0d0
+    this%vmix = 1.0d0
     ! For surfmat
     this%wssurf(:) = this%lattice%wav*ang2au
 
@@ -253,6 +268,70 @@ contains
     this%gt = 1.0d0
   end subroutine
 
+  subroutine bulkpot(this)
+    class(charge), intent(inout) :: this
+    ! Local variables 
+    integer :: I,IBAS,ICLAS,IM,JBAS,j,i_all,i_stat
+    real(rp) :: DIF,VADD,VERR,VMADI
+    real(rp), dimension(this%lattice%nrec) :: TDQ,RMAX
+    real(rp), dimension(:,:), allocatable :: AMAD
+    real(rp), dimension(this%lattice%nrec) :: VMAD0
+    integer, parameter :: npot = 5000
+
+    do i=1,this%lattice%nrec
+      rmax(i)=this%symbolic_atom(this%lattice%nbulk+i)%potential%ws_r
+    end do
+    !write (*,*) " NBAS=", NBAS, " NCLAS=", NCLAS
+    !print *,' Sum of electrons from recursion: ',sum(DQ)
+    do im = 1,this%lattice%nrec
+       VMAD0(IM) = this%symbolic_atom(this%lattice%nbulk+im)%potential%vmad
+    end do
+    if (this%lattice%NBAS > npot) then
+       write (*,*) "# DE ATOMOS NA CELA FERE AS DIMENSOES ATRIBUIDAS"
+       write (*,*) "             JOB ABORTADO                       "
+       write (*,*) "NBAS=", this%lattice%NBAS, "DIFF NDIM=", NPOT, "IN MAD"
+       !IFAIL = 1
+       return
+    end if
+    DIF = 0.d0
+    tdq(:) = 0.0d0
+    tdq(:) = this%dq(:)
+    dif = sum(tdq(:))
+    !write (*,*) "DIF IN MAD PROGRAM = ", DIF
+    if (ABS(DIF) > 5d-01) then
+       !IFAIL = 1
+       write (6,*) &
+          "******NEUTRALIDADE DE CARGA NAO OBEDECIDA - 5E-04", &
+          " PROGRAMA ABORTADO"
+       return
+    end if
+    allocate(AMAD(this%lattice%nbas,this%lattice%nbas),stat=i_stat)
+    open (15,file = "mad.mat",form = "unformatted",STATUS = "OLD")
+    do i = 1,this%lattice%nbas
+       read (15) (AMAD(i,j), j = 1,this%lattice%nbas)
+    end do
+    close (15)
+    do IBAS = 1,this%lattice%NBAS
+       VMADI = 0.d0
+       do JBAS = 1,this%lattice%NBAS
+          VMADI = VMADI + 2.d0*AMAD(JBAS,IBAS)*TDQ(this%lattice%iz(JBAS))
+       end do
+       this%symbolic_atom(this%lattice%nbulk+this%lattice%iz(IBAS))%potential%VMAD = VMADI
+    end do
+    !write (9,10001)
+    do ICLAS = 1,this%lattice%nrec
+       VADD = 2.d0 * TDQ(ICLAS) / RMAX(ICLAS)
+       !write (9,10000) ICLAS, TDQ(ICLAS), VMAD(ICLAS), VMAD(ICLAS)+VADD
+       this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD = &
+       this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD + VADD
+       !   write (42,*) VMAD(ICLAS), VMAD0(ICLAS)
+       this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD = &
+       this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD*this%VMIX + VMAD0(ICLAS)*(1.0-this%VMIX)
+       VERR = this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD - VMAD0(ICLAS)
+       !write (*,*) this%symbolic_atom(this%lattice%nbulk+iclas)%potential%VMAD, VERR
+       !   write (42,*)
+    end do
+  end subroutine bulkpot
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
   !> @brief

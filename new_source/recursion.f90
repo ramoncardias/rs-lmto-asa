@@ -638,14 +638,14 @@ module recursion_mod
     end do ! End of the loop on the nrec
 
      ! For debug purposes
-     !do i=1,this%lattice%nrec ! Loop on the number of atoms to be treat self-consistently
-     !  do l=1,9  ! Loop on the orbital l
-     !    write(123,*) 'orbital', l
-     !    do ll=1,llmax ! Loop on the recursion steps
-     !      write(123,*) this%a(ll,l,i,1), this%b2(ll,l,i,1)
-     !    end do
-     !  end do
-     !end do
+     do i=1,this%lattice%nrec ! Loop on the number of atoms to be treat self-consistently
+       do l=1,9  ! Loop on the orbital l
+         write(123,*) 'orbital', l
+         do ll=1,llmax ! Loop on the recursion steps
+           write(123,*) this%a(ll,l,i,1), this%b2(ll,l,i,1)
+         end do
+       end do
+     end do
     end subroutine
 
 

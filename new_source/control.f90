@@ -203,13 +203,13 @@ contains
     !integer, dimension(:), allocatable :: ifc                 
     real(rp) :: conca,concb,ruban
     logical :: lrot,incorb,do_asd,svac,blockrec,do_cochg,asd_jij,do_comom
-    character :: calctype
+    character(len=sl) :: calctype, recur
 
     ! variables associated with the reading processes
     integer :: iostatus, funit
     character(len=sl) :: fname_
 
-    namelist /control/ lld, llsp, nlim, npold, nsp,  &
+    namelist /control/ recur, lld, llsp, nlim, npold, nsp,  &
     idos, lrot, incorb, do_asd, mext ,&
     svac, calctype, txc, blockrec, partype, do_cochg, asd_jij, terminator, conca,&
     concb, ruban, njij,do_comom !ifc, mom
@@ -245,6 +245,7 @@ contains
     ruban = this%ruban
     njij = this%njij
     do_comom = this%do_comom
+    recur = this%recur
 
     open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
     if(iostatus /= 0) then
@@ -280,6 +281,7 @@ contains
     this%ruban = ruban
     this%njij = njij
     this%do_comom = do_comom
+    this%recur = recur
     ! end default
 
     ! Mandatory statements
@@ -412,6 +414,11 @@ contains
       .and. this%calctype /= 'S' &
       .and. this%calctype /= 'I' ) then 
       write(error_unit,'("[",A,":",I0,"]: lattice%calctype must be one of: ''B'', ''S'', ''I''")') __FILE__,__LINE__
+      error stop
+    end if
+    if(this%recur /= 'lanczos' &
+      .and. this%recur /= 'chebyshev' ) then
+      write(error_unit,'("[",A,":",I0,"]: lattice%recur must be one of: ''lanczos'' or ''chebyshev''")') __FILE__,__LINE__
       error stop
     end if
   end subroutine check_all

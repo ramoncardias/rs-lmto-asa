@@ -426,7 +426,8 @@ contains
   function endswith(string,substring)
     logical :: endswith
     character(len=*), intent(in) :: string, substring
-    endswith = trim(string(len(trim(string))-len(trim(substring))+1:)) == trim(substring)
+    endswith = len(trim(string)) >= len(trim(substring))
+    if(endswith) endswith = trim(string(len(trim(string))-len(trim(substring))+1:)) == trim(substring)
   end function endswith
 
   !> checks if string starts with substring

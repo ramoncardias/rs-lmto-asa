@@ -155,8 +155,8 @@ contains
     nw=10*this%lattice%ntype*this%control%lld
     ll_t=this%control%lld
 
-!    bdos=0.0d0
-!    g0=0.0d0
+    doso=0.0d0
+    this%g0=0.0d0
     do ia = 1, this%lattice%nrec
       do mdir = 1, this%control%nmdir
         doso = 0.0d0

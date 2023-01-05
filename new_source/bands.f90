@@ -72,6 +72,7 @@ module bands_mod
       procedure :: calculate_projected_green
       procedure :: calculate_projected_dos
       procedure :: calculate_moments
+      procedure :: calculate_pl
       procedure :: calculate_moments_chebgauss
       procedure :: calculate_magnetic_moments
       procedure :: calculate_fermi
@@ -174,15 +175,10 @@ module bands_mod
       ef_mag = 0.0d0
       ik1_mag = 0
       ik1 = 0
+      this%dtot(:) = 0.0d0
 
-      !Make sure nv1 is odd
-      if(mod(this%en%channels_ldos,2)==0)then
-        nv1 = this%en%channels_ldos + 1
-      else
-        nv1 = this%en%channels_ldos
-        this%en%channels_ldos = this%en%channels_ldos - 1
-      end if
-      ik1 = nv1 
+      ik1 = this%en%ik1
+      nv1 = this%en%nv1
      
       ! Define the valence electrons from the bulk parameters
       this%qqv = real(sum(this%symbolic_atom(1:this%lattice%nbulk_bulk)%element%valence))
@@ -208,7 +204,7 @@ module bands_mod
         call this%fermi(this%en%fermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
         this%nv1 = ik1
         this%e1 = e1_mag
-
+        write(*,*) this%nv1, this%e1, this%en%fermi
         !For Chebyshev DOS
         ef_mag = this%en%fermi
         e1_mag = ef_mag
@@ -283,11 +279,13 @@ module bands_mod
       integer :: ie ! Energy channel index
       integer :: isp, soff, jo, nsp
       real(rp) :: sgef, pmef, smef, isgn
+      real(rp), dimension(this%en%channels_ldos+10) :: y 
       real(rp), dimension(18) :: chebmom(18), chebmom1(18), chebmom2(18)
 
       call this%calculate_magnetic_moments()
 
-      do na=1,this%lattice%ntype
+      this%dspd(:,:,:) = 0.0d0
+      do na=1,this%lattice%nrec
         do isp=1,2  
            isgn=(-1.0d0)**(isp-1)
            soff=3*(isp-1)
@@ -320,19 +318,22 @@ module bands_mod
 
       do na=1,this%lattice%nrec
         do i=1,6
+          y(:) = 0.0d0
           if(i>3)then
             nsp = 2
           else
             nsp = 1
           end if  
           soff=3*(nsp-1)
-          call simpson_m(sgef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,0,this%en%ene)
-          call simpson_m(pmef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,1,this%en%ene)
-          call simpson_m(smef,this%en%edel,this%en%fermi,this%nv1,this%dspd(i,:,na),this%e1,2,this%en%ene)
+          y(:) = this%dspd(i,:,na) 
+          sgef = 0.0d0 ; pmef = 0.0d0 ; smef = 0.0d0
+          call simpson_m(sgef,this%en%edel,this%en%fermi,this%nv1,y,this%e1,0,this%en%ene)
+          call simpson_m(pmef,this%en%edel,this%en%fermi,this%nv1,y,this%e1,1,this%en%ene)
+          call simpson_m(smef,this%en%edel,this%en%fermi,this%nv1,y,this%e1,2,this%en%ene)
 
-          this%symbolic_atom(na)%potential%gravity_center(i-soff,nsp) = pmef/sgef
+          this%symbolic_atom(na)%potential%gravity_center(i-soff,nsp) = (pmef/sgef) - this%symbolic_atom(na)%potential%vmad
           this%symbolic_atom(na)%potential%ql(1,i-soff-1,nsp) = sgef
-          this%symbolic_atom(na)%potential%ql(2,i-soff-1,nsp) = pmef
+          this%symbolic_atom(na)%potential%ql(2,i-soff-1,nsp) = 0.0d0
           this%symbolic_atom(na)%potential%ql(3,i-soff-1,nsp) = smef - 2.0d0*(pmef/sgef)*pmef + ((pmef/sgef)**2)*sgef
         end do
       end do 
@@ -394,7 +395,7 @@ module bands_mod
  
       doscheb_i(:,:,:) = 0.0d0
 
-      do n=1,this%lattice%ntype
+      do n=1,this%lattice%nrec
         ! Calculate the density of states
         do l=1,18
           do i=1,this%control%lld
@@ -438,7 +439,7 @@ module bands_mod
 
       call this%calculate_projected_dos() 
      
-      do na=1,this%lattice%ntype
+      do na=1,this%lattice%nrec
         call simpson_m(this%symbolic_atom(na)%potential%mx,this%en%edel,this%en%fermi,this%nv1,this%dx(:,na),this%e1,0,this%en%ene)
         call simpson_m(this%symbolic_atom(na)%potential%my,this%en%edel,this%en%fermi,this%nv1,this%dy(:,na),this%e1,0,this%en%ene)
         call simpson_m(this%symbolic_atom(na)%potential%mz,this%en%edel,this%en%fermi,this%nv1,this%dz(:,na),this%e1,0,this%en%ene)
@@ -461,7 +462,7 @@ module bands_mod
       integer :: na ! Atom index
       integer :: ie ! Energy channel index
 
-      do na = 1,this%lattice%ntype
+      do na = 1,this%lattice%nrec
         do ie = 1,this%en%channels_ldos+10
           do i=1,9
             this%dz(ie,na) = this%dz(ie,na) - aimag(this%green%g0(ie,i,i,na)-this%green%g0(ie,i+9,i+9,na))/pi
@@ -479,7 +480,7 @@ module bands_mod
       integer :: na ! Atom index
       integer :: ie ! Energy channel index
 
-      do na = 1,this%lattice%ntype
+      do na = 1,this%lattice%nrec
         do ie = 1,this%en%channels_ldos+10
           do i=1,9
             do j=1,9
@@ -492,4 +493,27 @@ module bands_mod
       end do
     end subroutine calculate_projected_green
 
+    subroutine calculate_pl(this)
+      class(bands) :: this
+      ! Local variables
+      integer :: i ! orbital index    
+      integer :: is ! spin channel index
+      integer :: ia ! atom index
+      real(rp) :: rq, dnu, pli, delta2 ! Local variables
+
+      do ia=1,this%lattice%nrec
+        do is=1,2
+          do i=1,3
+            rq = 1/this%symbolic_atom(ia)%potential%qpar(i-1,is)
+            delta2 = this%symbolic_atom(ia)%potential%srdel(i-1,is)*this%symbolic_atom(ia)%potential%srdel(i-1,is)
+            dnu = (i-1.) + &
+                  (2.*(i-1)+1.)/ & 
+                  (rq*(this%symbolic_atom(ia)%potential%c(i-1,is)-this%symbolic_atom(ia)%potential%gravity_center(i,is))/2./(2*(i-1)+1.)/ &
+                  (this%symbolic_atom(ia)%potential%c(i-1,is)-this%symbolic_atom(ia)%potential%gravity_center(i,is)-delta2*rq)-1.)
+            pli = -atan(dnu)/pi + 0.5d0 + INT(this%symbolic_atom(ia)%potential%pl(i-1,is))
+            this%symbolic_atom(ia)%potential%pl(i-1,is) = pli
+          end do
+        end do
+      end do  
+    end subroutine calculate_pl
 end module bands_mod

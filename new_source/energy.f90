@@ -48,6 +48,7 @@ module energy_mod
     !> Energy mesh
     real(rp) :: edel
     real(rp), dimension(:), allocatable :: ene
+    integer :: ik1, nv1
     integer :: enpt
     !> Logical fix fermi level
     logical :: fix_fermi
@@ -174,9 +175,24 @@ contains
 
   subroutine e_mesh(this)
     class(energy), intent(inout) :: this
+    integer :: i
+    real(rp) :: prevfermi
 
-    integer :: i 
+    prevfermi = this%fermi
+ 
+    call this%build_from_file()
 
+    this%fermi = prevfermi
+    !Make sure nv1 is odd
+    if(mod(this%channels_ldos,2)==0)then
+      this%nv1 = this%channels_ldos + 1
+    else
+      this%nv1 = this%channels_ldos
+      this%channels_ldos = this%channels_ldos - 1
+    end if
+    this%ik1 = this%nv1
+
+    if(allocated(this%ene)) deallocate(this%ene)
     allocate(this%ene(this%channels_ldos+10))
 
     this%edel = (this%energy_max-this%energy_min)/this%channels_ldos
