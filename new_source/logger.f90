@@ -275,7 +275,6 @@ module logger_mod
         call this%log_var(varname,trim(varval), file, line)
     end subroutine logger_log_logical
 
-
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
     !> @brief If compiled with flag -DCOLOR, add color to messagem

@@ -24,6 +24,8 @@ module control_mod
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
   use string_mod, only: sl
+  use namelist_generator_mod, only: namelist_generator
+  use logger_mod, only: g_logger
   implicit none
 
   private
@@ -150,6 +152,7 @@ module control_mod
     procedure :: build_from_file
     procedure :: restore_to_default
     procedure :: print_state
+    procedure :: print_state_formatted
     procedure, private :: check_all
     final :: destructor
   end type control
@@ -398,6 +401,61 @@ contains
     endif
     close(newunit)
   end subroutine print_state
+
+    !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Print class members values in namelist format 
+  !>
+  !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+  !> @param[in] unit File unit used to write namelist
+  !> @param[in] file File name used to write namelist
+  !---------------------------------------------------------------------------
+  subroutine print_state_formatted(this,unit,file)
+    implicit none
+    class(control), intent(in) :: this
+
+    integer,intent(in),optional :: unit
+    character(len=*),intent(in),optional :: file
+
+    type(namelist_generator) :: nml
+
+    nml = namelist_generator('control')
+    
+    call nml%add('lld', this%lld)
+    call nml%add('llsp', this%llsp)
+    call nml%add('nlim', this%nlim)
+    call nml%add('npold', this%npold)
+    call nml%add('nsp', this%nsp)
+    call nml%add('idos', this%idos)
+    call nml%add('lrot', this%lrot)
+    call nml%add('incorb', this%incorb)
+    call nml%add('do_asd', this%do_asd)
+    call nml%add('mext', this%mext )
+    call nml%add('svac', this%svac)
+    call nml%add('calctype', this%calctype)
+    call nml%add('txc', this%txc)
+    call nml%add('blockrec', this%blockrec)
+    call nml%add('partype', this%partype)
+    call nml%add('do_cochg', this%do_cochg)
+    call nml%add('asd_jij', this%asd_jij)
+    call nml%add('terminator', this%terminator)
+    call nml%add('conca', this%conca)
+    call nml%add('concb', this%concb)
+    call nml%add('ruban', this%ruban)
+    call nml%add('njij', this%njij)
+    call nml%add('do_comom', this%do_comom)
+
+    if(present(unit) .and. present(file)) then
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+    else if(present(unit)) then
+      call nml%generate_namelist(unit=unit)
+    else if(present(file)) then
+      call nml%generate_namelist(file=file)
+    else
+      call nml%generate_namelist()
+    endif
+  end subroutine print_state_formatted
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:

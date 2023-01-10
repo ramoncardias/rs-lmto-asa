@@ -39,6 +39,7 @@ module self_mod
   use mix_mod
   use math_mod
   use precision_mod, only: rp
+  use timer_mod, only: g_timer
   implicit none
 
   private
@@ -627,6 +628,7 @@ contains
       !                        PERFORM THE RECURSION           
       !=========================================================================
       call g_logger%info('Perform recursion at step '//int2str(i),__FILE__,__LINE__)  
+      call g_timer%start('Calculation.self consistency.recursion')
       select case(this%control%calctype)
         case('B')
           do ia=1,this%lattice%nrec
@@ -644,6 +646,7 @@ contains
         case('chebyshev')
           call g_logger%fatal('Chebvshev recursion not implemented!',__FILE__,__LINE__)
       end select
+      call g_timer%stop('Calculation.self consistency.recursion')
       !=========================================================================
       !               SAVE THE TOTAL ENERGY FROM PREVIOUS ITERATION
       !=========================================================================
@@ -656,7 +659,7 @@ contains
       !=========================================================================
       !      CALCULATE THE DENSITY OF STATES AND THE NEW MOMENT BANDS QL
       !=========================================================================
-      call g_logger%info('Calculating the density of states and the new moment bands',__FILE__,__LINE__)
+      call g_timer%start('Calculation.self consistency.calculation of DOS')
       call this%en%e_mesh() ! Solve the energy mesh
       select case(this%control%recur)
         case('lanczos')
@@ -668,13 +671,17 @@ contains
       call this%bands%calculate_moments() ! Integrate the DOS and calculate the band momends QL
       call this%bands%calculate_pl() ! Calculate the PL using the read/previous potential parameters (ort)
       call this%mix%save_to('new') ! Save the calculated PL and QL into the mix%qia_new 
+      call g_timer%stop('Calculation.self consistency.calculation of DOS')
       !=========================================================================
       !                   MIX OLD AND NEW CALCULATED PL AND QL
       !=========================================================================
+      call g_timer%start('Calculation.self consistency.mixing')
       call this%mix%mixpq(this%mix%qia_old,this%mix%qia_new) ! Mix mix%qia_new with mix%qia_old and save into mix%qia
+      call g_timer%stop('Calculation.self consistency.mixing')
       !=========================================================================
       !         CALCULATE THE MADELUNG POTENTIAL (BULK ONLY IMPLEMENTED)
       !=========================================================================
+      call g_timer%start('Calculation.self consistency.madelung potential')
       select case(this%control%calctype)
         case('B')
           call this%charge%bulkpot() 
@@ -683,6 +690,7 @@ contains
         case('I') 
           call g_logger%fatal('Imputiry calculation not implemented!',__FILE__,__LINE__)
       end select
+      call g_timer%stop('Calculation.self consistency.madelung potential')
       !=========================================================================
       !                        SAVE MIXED PARAMETERS 
       !=========================================================================
@@ -690,6 +698,7 @@ contains
       !=========================================================================
       !                       MAKE SFC ATOMIC SPHERE                   
       !=========================================================================
+      call g_timer%start('Calculation.self consistency.atomic sfc')
       do ia=1,this%lattice%nrec
         qsl = this%lmtst(this%symbolic_atom(ia)) ! Makes the atomic sphere self-consistent and caltulate the orthogonal pottential parameters
       end do
@@ -699,6 +708,7 @@ contains
       do ia=1,this%lattice%nrec
         call this%symbolic_atom(ia)%predls() ! Transforms the potential from orthogonal to tight-binding basis
       end do
+      call g_timer%stop('Calculation.self consistency.atomic sfc')
       !=========================================================================
       !                TEST IF THE CALCULATION IS CONVERGED                       
       !=========================================================================

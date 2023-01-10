@@ -32,11 +32,11 @@ module timer_mod
 
   type :: simple_timer
     character(len=sl) :: label
-    real, private :: t_start, t_finish
+    real, private :: t_start, t_stop
   contains
     procedure :: start => simple_timer_start
-    procedure :: finish => simple_timer_finish
-    procedure :: has_finished => simple_timer_has_finished
+    procedure :: stop => simple_timer_stop
+    procedure :: has_stoped => simple_timer_has_stoped
     procedure :: delta => simpletimer_delta
     procedure :: report => simple_timer_report
   endtype simple_timer
@@ -46,7 +46,7 @@ module timer_mod
     type(simple_timer), private :: t_global
     contains
     procedure :: start => timer_start
-    procedure :: finish => timer_finish
+    procedure :: stop => timer_stop
     procedure :: print_report => timer_report
     final :: timer_destructor
   endtype timer
@@ -100,17 +100,17 @@ contains
     character(len=*), intent(in) :: label
     this%label = label
     call cpu_time(this%t_start)
-    this%t_finish = this%t_start
+    this%t_stop = this%t_start
   end subroutine simple_timer_start
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
   !> @brief Measures the final time
   !---------------------------------------------------------------------------
-  subroutine simple_timer_finish(this)
+  subroutine simple_timer_stop(this)
     class(simple_timer) :: this
-    call cpu_time(this%t_finish)
-  end subroutine simple_timer_finish
+    call cpu_time(this%t_stop)
+  end subroutine simple_timer_stop
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
@@ -123,22 +123,22 @@ contains
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
-  !> @brief Test if t_finish .gt. t_start
+  !> @brief Test if t_stop .gt. t_start
   !---------------------------------------------------------------------------
-  function simple_timer_has_finished(this) result(has_finished)
+  function simple_timer_has_stoped(this) result(has_stoped)
     class(simple_timer) :: this
-    logical :: has_finished
-    has_finished = this%t_finish .gt. this%t_start
-  end function simple_timer_has_finished
+    logical :: has_stoped
+    has_stoped = this%t_stop .gt. this%t_start
+  end function simple_timer_has_stoped
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:
-  !> @brief Returns the difference between t_finish and t_start
+  !> @brief Returns the difference between t_stop and t_start
   !---------------------------------------------------------------------------
   function simpletimer_delta(this) result(delta)
     class(simple_timer) :: this
     real(rp) :: delta
-    delta = this%t_finish-this%t_start
+    delta = this%t_stop-this%t_start
   end function simpletimer_delta
 
   !---------------------------------------------------------------------------
@@ -163,23 +163,23 @@ contains
   ! DESCRIPTION:
   !> @brief Measures the final time
   !---------------------------------------------------------------------------
-  subroutine timer_finish(this,label)
+  subroutine timer_stop(this,label)
     class(timer) :: this
     character(len=*), intent(in) :: label
     logical :: has_found
     integer :: i
     has_found = .False.
     do i = 1, size(this%timer_list)
-      if (trim(this%timer_list(i)%label) == trim(label) .and. .not. this%timer_list(i)%has_finished()) then
-        call this%timer_list(i)%finish
+      if (trim(this%timer_list(i)%label) == trim(label) .and. .not. this%timer_list(i)%has_stoped()) then
+        call this%timer_list(i)%stop
         has_found = .True.
         continue
       endif
     enddo
     if (.not. has_found) then
-      call g_logger%error('Finishing '//trim(label)//' without starting first',__FILE__,__LINE__)
+      call g_logger%error('stoping '//trim(label)//' without starting first',__FILE__,__LINE__)
     endif
-  end subroutine timer_finish
+  end subroutine timer_stop
 
   !---------------------------------------------------------------------------
   ! DESCRIPTION:

@@ -23,11 +23,12 @@
 module lattice_mod
 
   use control_mod
-  use string_mod, only : clean_str, sl
+  use string_mod, only : clean_str, sl, fmt
   use math_mod, only: cross_product
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
   use symbolic_atom_mod, only: symbolic_atom, array_of_symbolic_atoms
+  use namelist_generator_mod, only: namelist_generator
   implicit none
 
   private
@@ -303,6 +304,7 @@ module lattice_mod
     procedure :: calculate_nbas
     procedure :: print_state
     procedure :: print_state_full
+    procedure :: print_state_formatted
     procedure, private :: check_all
     final :: destructor
   end type lattice 
@@ -2664,5 +2666,96 @@ contains
     endif
     
   end subroutine print_state
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Print class members values in namelist format 
+  !>
+  !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+  !> @param[in] unit File unit used to write namelist
+  !> @param[in] file File name used to write namelist
+  !---------------------------------------------------------------------------
+  subroutine print_state_formatted(this,unit,file)
+    class(lattice), intent(in) :: this
+
+    integer,intent(in),optional :: unit
+    character(len=*),intent(in),optional :: file
+    
+    type(namelist_generator) :: nml
+    integer :: i
+
+    nml = namelist_generator('lattice')
+    
+    ! scalar
+
+    call nml%add('zmin', this%zmin)
+    call nml%add('zmax', this%zmax)
+    call nml%add('zstep', this%zstep)
+    call nml%add('wav', this%wav)
+    call nml%add('vol', this%vol)
+    call nml%add('rc', this%rc)
+    call nml%add('r2', this%r2)
+    call nml%add('celldm', this%celldm)
+    call nml%add('alat', this%alat)
+    call nml%add('reduced_nbas', this%reduced_nbas)
+    call nml%add('ntype', this%ntype)
+    call nml%add('ntot', this%ntot)
+    call nml%add('nrec', this%nrec)
+    call nml%add('nmax', this%nmax)
+    call nml%add('nlay', this%nlay)
+    call nml%add('ndim', this%ndim)
+    call nml%add('npe', this%npe)
+    call nml%add('nclu', this%nclu)
+    call nml%add('nbulk_bulk', this%nbulk_bulk)
+    call nml%add('nbulk', this%nbulk)
+    call nml%add('nbas', this%nbas)
+    call nml%add('kk', this%kk)
+    call nml%add('dx', this%dx)
+    call nml%add('dy', this%dy)
+    call nml%add('dz', this%dz)
+    call nml%add('dw', this%dw)
+    call nml%add('crystal_sym', this%crystal_sym)
+    call nml%add('surftype', this%surftype)
+
+    ! one dimensional allocatables
+    ! TODO: implement test inside namelist_generator
+    if (allocated(this%z)) call nml%add('z',this%z)
+    if (allocated(this%ct)) call nml%add('ct',this%ct)
+    if (allocated(this%reduced_acr)) call nml%add('reduced_acr',this%reduced_acr)
+    if (allocated(this%num)) call nml%add('num',this%num)
+    if (allocated(this%no)) call nml%add('no',this%no)
+    if (allocated(this%izpsurf)) call nml%add('izpsurf',this%izpsurf)
+    if (allocated(this%izsurf)) call nml%add('izsurf',this%izsurf)
+    if (allocated(this%nosurf)) call nml%add('nosurf',this%nosurf)
+    if (allocated(this%izpo)) call nml%add('izpo',this%izpo)
+    if (allocated(this%izp)) call nml%add('izp',this%izp)
+    if (allocated(this%iz)) call nml%add('iz',this%iz)
+    if (allocated(this%iu)) call nml%add('iu',this%iu)
+    if (allocated(this%irec)) call nml%add('irec',this%irec)
+    if (allocated(this%ib)) call nml%add('ib',this%ib)
+
+    ! ! two dimensional allocatables
+    ! TODO: implement test inside namelist_generator
+    call nml%add('a',this%a)
+    if (allocated(this%primcell)) call nml%add('primcell',this%primcell)
+    if (allocated(this%inclu)) call nml%add('inclu',this%inclu)
+    if (allocated(this%crsurf)) call nml%add('crsurf',this%crsurf)
+    if (allocated(this%crd)) call nml%add('crd',this%crd)
+    if (allocated(this%cr)) call nml%add('cr',this%cr)
+    if (allocated(this%acr)) call nml%add('acr',this%acr)
+
+    if(present(unit) .and. present(file)) then
+      ! call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+    else if(present(unit)) then
+      call nml%generate_namelist(unit=unit)
+    else if(present(file)) then
+      call nml%generate_namelist(file=file)
+    else
+      call nml%generate_namelist()
+    endif
+
+    
+  end subroutine print_state_formatted
 
 end module lattice_mod

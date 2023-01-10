@@ -9,7 +9,7 @@ else
 LFLAGS= -llapack -lblas
 endif
 endif
-OPTFLAGS=-g -fbacktrace -cpp -Ofast -ffree-line-length-0 -fpic -fcheck=all 
+OPTFLAGS=-fallow-argument-mismatch -O2 -ffree-line-length-0 -g -fbacktrace -cpp #-g -fbacktrace -cpp -Ofast -ffree-line-length-0 -fpic -fcheck=all 
 OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o energy.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o xc.o
 CPPFLAGS=-DDEBUG -DCOLOR
 FLAGS=${OPTFLAGS} ${CPPFLAGS}
@@ -35,15 +35,16 @@ run: ${EXE}
 	${FC} ${FLAGS} -c $<
 
 # dependencies
+control.o: precision.o string.o namelist_generator.o logger.o
 safe_alloc.o: string.o report.o
 logger.o: string.o face.o report.o
 string.o: precision.o
 math.o: precision.o
 calculation.o: self.o lattice.o control.o charge.o symbolic_atom.o hamiltonian.o recursion.o string.o green.o density_of_states.o bands.o mix.o
 charge.o: lattice.o precision.o math.o string.o
-self.o: math.o lattice.o control.o charge.o precision.o symbolic_atom.o logger.o xc.o recursion.o density_of_states.o green.o bands.o energy.o mix.o 
+self.o: math.o lattice.o control.o charge.o precision.o symbolic_atom.o logger.o xc.o recursion.o density_of_states.o green.o bands.o energy.o mix.o timer.o
 energy.o: lattice.o
-lattice.o: string.o math.o control.o precision.o symbolic_atom.o
+lattice.o: string.o math.o control.o precision.o symbolic_atom.o namelist_generator.o
 # potential.o: lattice.o precision.o string.o
 main.o: calculation.o precision.o os.o logger.o
 element.o: globals.o precision.o logger.o string.o

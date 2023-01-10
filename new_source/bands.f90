@@ -31,7 +31,9 @@ module bands_mod
     use recursion_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
     use precision_mod, only:rp
+    use logger_mod, only: g_logger
     use math_mod
+    use string_mod
     implicit none
    
     private
@@ -204,7 +206,7 @@ module bands_mod
         call this%fermi(this%en%fermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
         this%nv1 = ik1
         this%e1 = e1_mag
-        write(*,*) this%nv1, this%e1, this%en%fermi
+        call g_logger%info('Fermi energy: '//real2str(this%en%fermi),__FILE__,__LINE__)
         !For Chebyshev DOS
         ef_mag = this%en%fermi
         e1_mag = ef_mag

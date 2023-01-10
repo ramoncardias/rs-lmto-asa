@@ -23,7 +23,7 @@
 module namelist_generator_mod
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
-  use string_mod, only: sl, int2str, real2str
+  use string_mod, only: sl, int2str, real2str, fmt
   implicit none
 
   private
@@ -56,6 +56,13 @@ module namelist_generator_mod
       procedure :: to_string => logical_variable_to_string
   end type logical_variable
 
+  type :: array_integer_variable
+    character(len=sl) :: name
+    integer, dimension(:), allocatable :: value
+    contains
+      procedure :: to_string => array_integer_variable_to_string
+  end type array_integer_variable
+
   type :: array_real_variable
     character(len=sl) :: name
     real(rp), dimension(:), allocatable :: value
@@ -65,7 +72,7 @@ module namelist_generator_mod
 
 
   !> Module's main structure
-  type, public :: namelist_generator
+  type :: namelist_generator
     !> Name of namelist
     !> 
     !> Name of namelist
@@ -78,10 +85,11 @@ module namelist_generator_mod
     type(real_variable), dimension(:), allocatable :: list_of_real_variables
     type(string_variable), dimension(:), allocatable :: list_of_string_variables
     type(logical_variable), dimension(:), allocatable :: list_of_logical_variables
+    type(array_integer_variable), dimension(:), allocatable :: list_of_array_integer_variables
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
   contains
-    procedure :: add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_real4_variable, add_array_real8_variable
-    generic :: add_variable => add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_real4_variable, add_array_real8_variable
+    procedure :: add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable
+    generic :: add => add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable
     procedure :: generate_namelist
     final :: destructor
   end type namelist_generator
@@ -89,6 +97,12 @@ module namelist_generator_mod
   interface namelist_generator
     procedure :: constructor
   end interface namelist_generator
+
+  public :: namelist_generator
+
+  ! Max number of rows/columns to show on results
+  integer, parameter :: MAX_ROWS = 20
+  integer, parameter :: MAX_COLS = 20
 
 contains
 
@@ -108,6 +122,7 @@ contains
     allocate(obj%list_of_real_variables(0))
     allocate(obj%list_of_string_variables(0))
     allocate(obj%list_of_logical_variables(0))
+    allocate(obj%list_of_array_integer_variables(0))
     allocate(obj%list_of_array_real_variables(0))
   end function constructor
 
@@ -272,12 +287,42 @@ contains
   !> @brief
   !> Destructor
   !---------------------------------------------------------------------------
+  subroutine add_array_integer_variable(this,name,value)
+    implicit none
+    class(namelist_generator),intent(inout) :: this
+    type(array_integer_variable) :: variable
+    character(len=*) :: name
+    integer, dimension(:), intent(in) :: value
+    type(array_integer_variable), dimension(:), allocatable :: list_of_array_integer_variables
+    integer :: new_size
+
+    variable%name = name
+    allocate(variable%value(size(value)))
+    variable%value = value
+
+    if(allocated(this%list_of_array_integer_variables)) then
+      call move_alloc(this%list_of_array_integer_variables,list_of_array_integer_variables)
+    endif
+    new_size = size(this%list_of_array_integer_variables) + 1
+    allocate(this%list_of_array_integer_variables(new_size))
+
+    if(new_size > 1) then
+      this%list_of_array_integer_variables(:new_size-1) = list_of_array_integer_variables
+    endif
+    this%list_of_array_integer_variables(new_size) = variable
+  end subroutine add_array_integer_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
   subroutine add_array_real4_variable(this,name,value)
     implicit none
     class(namelist_generator),intent(inout) :: this
     type(array_real_variable) :: variable
     character(len=*) :: name
-    real,dimension(:),intent(in) :: value
+    real(4), dimension(:), intent(in) :: value
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
     integer :: new_size
 
@@ -307,7 +352,7 @@ contains
     class(namelist_generator),intent(inout) :: this
     type(array_real_variable) :: variable
     character(len=*) :: name
-    real(rp),dimension(:),intent(in) :: value
+    real(8), dimension(:), intent(in) :: value
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
     integer :: new_size
 
@@ -332,35 +377,91 @@ contains
   !> @brief
   !> Destructor
   !---------------------------------------------------------------------------
-  subroutine generate_namelist(this,fname)
+  subroutine add_matrix_integer_variable(this,name,value)
+    integer, dimension(:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_matrix_*_variable.f90'
+  end subroutine add_matrix_integer_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
+  subroutine add_matrix_real4_variable(this,name,value)
+    real(4), dimension(:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_matrix_*_variable.f90'
+  end subroutine add_matrix_real4_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
+  subroutine add_matrix_real8_variable(this,name,value)
+    real(8), dimension(:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_matrix_*_variable.f90'
+  end subroutine add_matrix_real8_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
+  subroutine generate_namelist(this,unit,file)
     implicit none
-    class(namelist_generator),intent(in) :: this
-    character(len=*) :: fname
+    class(namelist_generator), intent(in) :: this
+    character(len=*), optional :: file
+    integer, optional :: unit
     integer :: funit, i
 
-    open(unit=funit,file=trim(fname)//'.nml',action='write')
+    if(present(unit) .and. present(file)) then
+      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
+      error stop
+    else if(present(unit) .or. present(file)) then
+      if(present(unit)) then
+        funit = unit
+      else if(present(file)) then
+        open(unit=funit,file=trim(file)//'.nml',action='write')
+      endif
 
-    write(funit,'("&",A)') this%name
+      write(funit,'("&",A)') this%name
+      do i=1, size(this%list_of_integer_variables)
+        write(funit,'(" ",A)') trim(this%list_of_integer_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_string_variables)
+        write(funit,'(" ",A)') trim(this%list_of_string_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_real_variables)
+        write(funit,'(" ",A)') trim(this%list_of_real_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_logical_variables)
+        write(funit,'(" ",A)') trim(this%list_of_logical_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_array_real_variables)
+        write(funit,'(" ",A)') trim(this%list_of_array_real_variables(i)%to_string())
+      enddo
+      write(funit,'("/")')
 
-    do i=1, size(this%list_of_integer_variables)
-      write(funit,'(" ",A)') trim(this%list_of_integer_variables(i)%to_string())
-    enddo
-    do i=1, size(this%list_of_string_variables)
-      write(funit,'(" ",A)') trim(this%list_of_string_variables(i)%to_string())
-    enddo
-    do i=1, size(this%list_of_real_variables)
-      write(funit,'(" ",A)') trim(this%list_of_real_variables(i)%to_string())
-    enddo
-    do i=1, size(this%list_of_logical_variables)
-      write(funit,'(" ",A)') trim(this%list_of_logical_variables(i)%to_string())
-    enddo
-    do i=1, size(this%list_of_array_real_variables)
-      write(funit,'(" ",A)') trim(this%list_of_array_real_variables(i)%to_string())
-    enddo
-
-    write(funit,'("/")')
-
-    close(funit)
+      if(present(file)) close(funit)
+    else
+      write(*,'("&",A)') this%name
+      do i=1, size(this%list_of_integer_variables)
+        write(*,'(" ",A)') trim(this%list_of_integer_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_string_variables)
+        write(*,'(" ",A)') trim(this%list_of_string_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_real_variables)
+        write(*,'(" ",A)') trim(this%list_of_real_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_logical_variables)
+        write(*,'(" ",A)') trim(this%list_of_logical_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_array_real_variables)
+        write(*,'(" ",A)') trim(this%list_of_array_real_variables(i)%to_string())
+      enddo
+      write(*,'("/")')
+    endif
   end subroutine generate_namelist
 
   function integer_variable_to_string(this) result(output)
@@ -395,10 +496,22 @@ contains
     endif
   end function logical_variable_to_string
 
+  function array_integer_variable_to_string(this) result(output)
+    implicit none
+    class(array_integer_variable),intent(in) :: this
+    character(len=sl) :: output
+    integer i
+    output = ''
+    do i=1,size(this%value)
+      output = trim(output)//', '//trim(int2str(this%value(i)))
+    enddo
+    output = trim(this%name)//' = '//output(3:)
+  end function array_integer_variable_to_string
+
   function array_real_variable_to_string(this) result(output)
     implicit none
     class(array_real_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     integer i
     output = ''
     do i=1,size(this%value)

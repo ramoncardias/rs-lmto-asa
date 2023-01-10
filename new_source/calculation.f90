@@ -36,6 +36,7 @@ module calculation_mod
   use mix_mod
   use precision_mod, only: rp
   use string_mod, only: sl
+  use timer_mod, only: g_timer
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   implicit none
 
@@ -353,26 +354,20 @@ end subroutine pre_processing_buildsurf
     type(dos), target :: dos_obj
     type(bands), target :: bands_obj
     type(mix), target :: mix_obj
-    real(rp) :: start, finish
-    real(rp), dimension(6) :: QSL
     integer :: i
 
  
     ! Constructing control object
-    !call control_obj%restore_to_default
-    !call control_obj%build_from_file(this%fname)
     control_obj = control(this%fname)
 
     ! Constructing lattice object
     lattice_obj = lattice(control_obj)
 
     ! Running the pre-calculation
-    call cpu_time(start)
+    call g_timer%start('Calculation.pre-processing')
     call lattice_obj%build_data()
     call lattice_obj%bravais()
     call lattice_obj%structb()
-    call cpu_time(finish)
-    print '("Pre-processing time = ",f10.3," seconds.")',(finish-start)!/32
 
     ! Creating the symbolic_atom object
     call lattice_obj%atomlist()
@@ -380,7 +375,7 @@ end subroutine pre_processing_buildsurf
     ! Constructing the charge object
     charge_obj = charge(lattice_obj)
     call charge_obj%bulkmat()
-
+    call g_timer%stop('Calculation.pre-processing')
 
     ! Constructing mixing object
     mix_obj = mix(lattice_obj,charge_obj)
@@ -390,42 +385,30 @@ end subroutine pre_processing_buildsurf
 
     ! Creating hamiltonian object
     hamiltonian_obj = hamiltonian(charge_obj)
-    !call hamiltonian_obj%build_lsham
 
     ! Creating recursion object
     recursion_obj = recursion(hamiltonian_obj,energy_obj)
 
     ! Creating density of states object
     dos_obj = dos(recursion_obj,energy_obj)
-    !Chebyshev test
-!    call cpu_time(start)
-!    call recursion_obj%chebyshev_recur()
-!    call recursion_obj%chebyshev_recur_full()
-!    call cpu_time(finish)
-!    print '("Recursion Chebyshev time = ",f10.3," seconds.")',(finish-start)!/32
-
-!    call dos_obj%chebyshev_dos()
-    !    call dos_obj%chebyshev_dos_full()
 
     ! Creating Green function object
     green_obj = green(dos_obj)
-!    call green_obj%sgreen()
 
     ! Creating bands object
     bands_obj = bands(green_obj)
-!    call bands_obj%calculate_fermi()
-!    call bands_obj%calculate_moments()
-!    call bands_obj%calculate_moments_chebgauss()
 
     ! Creating the self object
     self_obj = self(bands_obj,mix_obj)
+    call g_timer%start('Calculation.self consistency')
     call self_obj%run()
+    call g_timer%stop('Calculation.self consistency')
 
     if(this%verbose) then
-      call control_obj%print_state()
-      call lattice_obj%print_state()
-      call self_obj%print_state()
-      call charge_obj%print_state()
+      !call control_obj%print_state_formatted()
+      !call lattice_obj%print_state_formatted()
+      !call self_obj%print_state()
+      !call charge_obj%print_state()
       call save_state(lattice_obj%symbolic_atoms)
     endif
 

@@ -5,12 +5,13 @@ program main
   use, intrinsic :: iso_fortran_env, only: output_unit
   use precision_mod, only: rp
   use logger_mod, only: g_logger
+  use timer_mod, only: g_timer, timer
 
   implicit none
   type(calculation) :: calculation_obj
   type(argument_parser) :: args
-  real(rp) :: start, finish
   integer :: nomp
+  real(rp) :: start, finish
 #ifdef OMP
   ! External functions
   integer, external :: omp_get_num_threads
@@ -24,7 +25,8 @@ program main
    !$omp end master
    !$omp end parallel
 #endif
-  call g_logger%debug('Initializing with DEBUG=ON',__FILE__,__LINE__)
+  g_timer = timer()
+  !call g_logger%debug('Initializing with DEBUG=ON',__FILE__,__LINE__)
 
   ! Input
   args = argument_parser()
@@ -32,9 +34,12 @@ program main
 
 
   ! Run
+  call g_timer%start('Calculation')
   call cpu_time(start)
   call calculation_obj%process
   call cpu_time(finish)
+  call g_timer%stop('Calculation')
+  print '("Total calculatio time = ",f10.3," seconds.")',(finish-start)!/32
 
-  print '("Time = ",f10.3," seconds.")',(finish-start)!/nomp
+  call g_timer%print_report()
 end program main

@@ -43,6 +43,13 @@ module string_mod
   !> 132 is the maximum length of a line free-form Fortran source line
   integer,parameter :: sl = 132
 
+  interface fmt
+    procedure :: fmt_txt
+    procedure :: fmt_integer
+    procedure :: fmt_real4
+    procedure :: fmt_real8
+  end interface fmt
+  
 contains
   !> Eliminate the tab characters and adjust to the left side
   function clean_str(str) result(strout) 
@@ -499,6 +506,42 @@ contains
     findent_str = string
     call indent_str(findent_str,amount)
   end function findent_str
+
+  function fmt_txt(format,value) result(txt)
+    character(len=*), intent(in) :: format
+    character(len=*), intent(in) :: value
+    character(len=:), allocatable :: txt
+    character(len=sl) :: tmp_txt
+    write(tmp_txt,'('//format//')') value
+    txt = trim(tmp_txt)
+  end function fmt_txt
+
+  function fmt_integer(format,value) result(txt)
+    character(len=*), intent(in) :: format
+    integer, intent(in) :: value
+    character(len=:), allocatable :: txt
+    character(len=sl) :: tmp_txt
+    write(tmp_txt,'('//format//')') value
+    txt = trim(tmp_txt)
+  end function fmt_integer
+
+  function fmt_real4(format,value) result(txt)
+    character(len=*), intent(in) :: format
+    real(4), intent(in) :: value
+    character(len=:), allocatable :: txt
+    character(len=sl) :: tmp_txt
+    write(tmp_txt,'('//format//')') value
+    txt = trim(tmp_txt)
+  end function fmt_real4
+
+  function fmt_real8(format,value) result(txt)
+    character(len=*), intent(in) :: format
+    real(8), intent(in) :: value
+    character(len=:), allocatable :: txt
+    character(len=sl) :: tmp_txt
+    write(tmp_txt,'('//format//')') value
+    txt = trim(tmp_txt)
+  end function fmt_real8
 
   
 end module string_mod
