@@ -388,8 +388,7 @@ contains
     do_comom = this%do_comom
 
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
         write(unit,nml=control)
     else if(present(file)) then

@@ -9,8 +9,9 @@ else
 LFLAGS= -llapack -lblas
 endif
 endif
-OPTFLAGS=-fallow-argument-mismatch -O2 -ffree-line-length-0 -g -fbacktrace -cpp #-g -fbacktrace -cpp -Ofast -ffree-line-length-0 -fpic -fcheck=all 
-OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o energy.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o xc.o
+OPTFLAGS=-fallow-argument-mismatch -O2 -ffree-line-length-0 -g -fbacktrace -cpp
+#OPTFLAGS=-g -fbacktrace -cpp -Ofast -ffree-line-length-0 -fpic -fcheck=all 
+OBJ=safe_alloc.o logger.o face.o precision.o math.o string.o control.o lattice.o potential.o energy.o self.o charge.o calculation.o element.o globals.o symbolic_atom.o hamiltonian.o recursion.o os.o green.o density_of_states.o bands.o mix.o namelist_generator.o timer.o report.o xc.o array.o
 CPPFLAGS=-DDEBUG -DCOLOR
 FLAGS=${OPTFLAGS} ${CPPFLAGS}
 
@@ -36,7 +37,7 @@ run: ${EXE}
 
 # dependencies
 control.o: precision.o string.o namelist_generator.o logger.o
-safe_alloc.o: string.o report.o
+safe_alloc.o: string.o report.o logger.o string.o report.o
 logger.o: string.o face.o report.o
 string.o: precision.o
 math.o: precision.o
@@ -56,10 +57,11 @@ green.o: energy.o control.o lattice.o symbolic_atom.o recursion.o density_of_sta
 density_of_states.o: control.o lattice.o energy.o symbolic_atom.o recursion.o precision.o math.o
 bands.o: control.o energy.o green.o lattice.o symbolic_atom.o density_of_states.o precision.o math.o
 mix.o: precision.o string.o control.o lattice.o symbolic_atom.o
-namelist_generator.o: precision.o string.o
+namelist_generator.o: precision.o string.o logger.o array.o
 timer.o: precision.o string.o globals.o
 report.o: precision.o string.o
 xc.o: control.o logger.o string.o precision.o math.o
+array.o: logger.o
 
 globals.o: globals.f90
 	#@(awk -i inplace -f .makefile_scripts/global_root_folder_filler.awk globals.f90)

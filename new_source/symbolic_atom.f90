@@ -27,13 +27,14 @@ module symbolic_atom_mod
     use precision_mod, only: rp
     use potential_mod 
     use math_mod
+    use logger_mod, only: g_logger
     implicit none
 
     private
 
     ! public functions
     public :: array_of_symbolic_atoms
-    public :: print_state, print_state_full
+    public :: print_state, print_state_full, print_state_formatted
     public :: save_state
     public :: load_state
 
@@ -73,6 +74,7 @@ module symbolic_atom_mod
         procedure :: restore_to_default
         procedure :: print_state => symbolic_atom_print_state
         procedure :: print_state_full => symbolic_atom_print_state_full
+        procedure :: print_state_formatted => symbolic_atom_print_state_formatted
         procedure :: mesh_grid_size
         procedure :: B
         procedure :: rho0
@@ -224,8 +226,7 @@ contains
         character(len=*),optional :: file
         integer :: newunit
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             call this%element%print_state(unit=unit)
             call this%potential%print_state(unit=unit)
@@ -253,8 +254,7 @@ contains
         character(len=*),optional :: file
         integer :: newunit
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             call this%element%print_state_full(unit=unit)
             call this%potential%print_state_full(unit=unit)
@@ -268,6 +268,35 @@ contains
             call this%potential%print_state_full()
         endif
     end subroutine symbolic_atom_print_state_full
+
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> Print class members values in namelist format 
+    !>
+    !> Print class members values in namelist format 
+    !---------------------------------------------------------------------------
+    subroutine symbolic_atom_print_state_formatted(this,unit,file)
+        class(symbolic_atom) :: this
+        integer,optional :: unit
+        character(len=*),optional :: file
+        integer :: newunit
+        if(present(unit) .and. present(file)) then
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+        else if(present(unit)) then
+            call this%element%print_state_formatted(unit=unit)
+            call this%potential%print_state_formatted(unit=unit)
+        else if(present(file)) then
+            open(newunit=newunit,file=file,action='write')
+            call this%element%print_state_formatted(unit=newunit)
+            call this%potential%print_state_formatted(unit=newunit)
+            close(newunit)
+        else
+            call this%element%print_state_formatted()
+            call this%potential%print_state_formatted()
+        endif
+    end subroutine symbolic_atom_print_state_formatted
+
 
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
@@ -387,8 +416,7 @@ contains
 
         open(newunit=funit,file=fname,action='read',iostat=iostatus,status='old')
         if(iostatus /= 0) then
-            write(error_unit,'("[",A,":",I0,"]: file ",A," not found")') __FILE__,__LINE__,trim(fname)
-            error stop
+            call g_logger%fatal("file " // trim(fname) //" not found", __FILE__, __LINE__)
         endif
         
         read(funit,nml=atoms,iostat=iostatus)
@@ -421,8 +449,7 @@ contains
         if((present(unit) .and. present(file)) .or. \
             (present(unit) .and. present(suffix)) .or. \
             (present(file) .and. present(suffix))) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit, file and suffix are present")') __FILE__,__LINE__
-            error stop
+                call g_logger%fatal("Argument error: both unit, file and suffix are present",__FILE__,__LINE__)
         else if(present(file)) then
             open(newunit=newunit,file=file)
             do i=1, size(array)
@@ -464,8 +491,7 @@ contains
         if((present(unit) .and. present(file)) .or. \
             (present(unit) .and. present(suffix)) .or. \
             (present(file) .and. present(suffix))) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit, file and suffix are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal("Argument error: both unit, file and suffix are present",__FILE__,__LINE__)
         else if(present(file)) then
             open(newunit=newunit,file=file,action='write')
             do i=1, size(array)
@@ -491,13 +517,55 @@ contains
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
     !> @brief
+    !> Print class members values in namelist format 
+    !>
+    !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+    !> @param[in] unit File unit used to write namelist
+    !> @param[in] file File name used to write namelist
+    !> @param[in] suffix If provided, prints the state to file with the same symbol added to this suffix
+    !---------------------------------------------------------------------------
+    subroutine print_state_formatted(array,unit,file,suffix)
+        type(symbolic_atom), dimension(:), intent(in) :: array
+        integer,intent(in),optional :: unit
+        character(len=*),intent(in),optional :: file, suffix
+        character(len=sl) :: new_file
+        integer :: i,newunit
+        if((present(unit) .and. present(file)) .or. \
+            (present(unit) .and. present(suffix)) .or. \
+            (present(file) .and. present(suffix))) then
+            call g_logger%fatal("Argument error: both unit, file and suffix are present",__FILE__,__LINE__)
+        else if(present(file)) then
+            open(newunit=newunit,file=file)
+            do i=1, size(array)
+                call array(i)%print_state_formatted(unit=newunit)
+            enddo
+            close(newunit)
+        else if(present(suffix)) then
+            do i=1, size(array)
+                new_file = trim(array(i)%element%symbol)
+                if(endswith(new_file,".nml")) then
+                    call replace(new_file,".nml","")
+                endif
+                new_file = trim(new_file)//trim(suffix)//".nml"
+                call array(i)%print_state_formatted(file=new_file)
+            enddo
+        else
+            do i=1, size(array)
+                call array(i)%print_state_formatted(unit=unit)
+            enddo
+        endif
+    end subroutine print_state_formatted
+
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
     !> Shortcut for print_state_full with suffix="_out" 
     !>
     !> Shortcut for print_state_full with suffix="_out" 
     !---------------------------------------------------------------------------
     subroutine save_state(array)
         type(symbolic_atom), dimension(:), intent(in) :: array
-        call print_state(array,suffix="_out")
+        call print_state_formatted(array,suffix="_out")
     end subroutine save_state
 
     !---------------------------------------------------------------------------

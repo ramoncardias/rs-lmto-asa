@@ -277,6 +277,7 @@ contains
     ll_fail = ll_in
     nw = 10*this%lattice%ntype*this%control%lld
     npts = this%en%channels_ldos+10
+    tdens = 0.0d0
 
     do nl = 1,18
       do l = 1,this%control%lld

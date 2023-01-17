@@ -29,6 +29,7 @@ module lattice_mod
   use precision_mod, only: rp
   use symbolic_atom_mod, only: symbolic_atom, array_of_symbolic_atoms
   use namelist_generator_mod, only: namelist_generator
+  use logger_mod, only: g_logger
   implicit none
 
   private
@@ -622,11 +623,11 @@ contains
          this%celldm = 1.633d0
       end if
       a(:,1) =  [1.00000000,  0.00000000,  0.00000000]
-      a(:,2) =  [-.50000000,  0.86603000,  0.00000000]
+      a(:,2) =  [-.50000000,  0.86602500,  0.00000000]
       a(:,3) =  [0.00000000,  0.00000000,  0.00000000]
       a(3,3) = this%celldm
       this%crd(:,1) = [0.0, 0.0, 0.0]
-      this%crd(:,2) = [-.5, -.28868000, 0.00000000]
+      this%crd(:,2) = [0.0, 0.577350000, 0.00000000]
       this%crd(3,2) = (0.5d0)*this%celldm
       this%nbulk_bulk = 2
       this%ntot = 2
@@ -2564,8 +2565,7 @@ contains
     endif
 
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
         write(unit,nml=lattice)
     else if(present(file)) then
@@ -2653,8 +2653,7 @@ contains
     endif
 
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
         write(unit,nml=lattice)
     else if(present(file)) then
@@ -2746,7 +2745,7 @@ contains
     if (allocated(this%acr)) call nml%add('acr',this%acr)
 
     if(present(unit) .and. present(file)) then
-      ! call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
       call nml%generate_namelist(unit=unit)
     else if(present(file)) then
@@ -2754,8 +2753,6 @@ contains
     else
       call nml%generate_namelist()
     endif
-
-    
   end subroutine print_state_formatted
 
 end module lattice_mod

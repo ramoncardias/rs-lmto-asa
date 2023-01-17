@@ -53,6 +53,7 @@ module green_mod
       complex(rp), dimension(:,:,:,:), allocatable :: g0
     contains
       procedure :: sgreen
+      procedure :: chebyshev_green
       procedure :: restore_to_default
       final :: destructor
     end type
@@ -186,4 +187,67 @@ contains
       end do
     end do
   end subroutine sgreen
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Uses the moments form the Chebyshev recursions to calculate the onsite GF
+  !---------------------------------------------------------------------------
+  subroutine chebyshev_green(this)
+    class(green), intent(inout) :: this
+    ! Local variables
+    real(rp), dimension(this%control%lld*2+2) :: kernel
+    real(rp), dimension(this%en%channels_ldos+10,0:this%control%lld*2+2) :: polycheb
+    real(rp), dimension(this%en%channels_ldos+10) :: w, wscale
+    real(rp) :: wstep, eps, wmin, wmax, a, b
+    integer :: i, j, k, l, m, n
+
+
+    this%g0 = 0.0d0
+
+    ! Defining rescaling coeficients
+    a = (this%en%energy_max-this%en%energy_min)/(2-0.3)
+    b = (this%en%energy_max+this%en%energy_min)/2
+          
+    wscale(:) = (this%en%ene(:)-b)/a
+          
+    ! Calculating the Jackson Kernel
+    call jackson_kernel((this%control%lld)*2+2,kernel)
+      
+    ! Calculating the Lorentz Kernel
+!    call lorentz_kernel(this%control%lld,kernel,4.0d0)
+        
+        
+    do n=1,this%lattice%nrec ! Loop on self-consistent atoms
+      ! Multiply the moments with the kernel
+      do i=1,18
+        this%recursion%mu_ng(n,:,i,i) = this%recursion%mu_n(n,:,i,i)*kernel(:)
+      end do
+
+      this%recursion%mu_ng(n,2:size(kernel),:,:) = this%recursion%mu_ng(n,2:size(kernel),:,:)*2
+
+      do i=1,size(kernel)
+        write(400+n,*) i, sum(this%recursion%mu_n(n,i,1:18,1:18))
+      end do
+
+
+      ! Calculate the Chebyshev polynomials
+      call t_polynomial(size(w),size(kernel),wscale(:),polycheb)
+
+      ! Calculate the density of states
+      do i=1,size(kernel)
+        do l=1,18
+          do m=1,18
+            this%g0(:,l,m,n) = this%g0(:,l,m,n) + (-i_unit*(this%recursion%mu_ng(n,i,l,m)*exp(-i_unit*(i-1)*acos(wscale(:)))))
+          end do
+        end do
+      end do
+
+      do l=1,18
+        do m=1,18
+        this%g0(:,l,m,n) = this%g0(:,l,m,n)/((sqrt((a**2)-((this%en%ene(:)-b)**2))))
+        end do
+      end do
+    end do  ! End loop on self-consistent atoms
+  end subroutine chebyshev_green
 end module

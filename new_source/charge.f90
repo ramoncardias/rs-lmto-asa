@@ -28,6 +28,8 @@ module charge_mod
   use math_mod, only: pi, sqrt_pi, cross_product, ang2au, distance, angle, pos, erodrigues, normalize
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
+  use namelist_generator_mod, only: namelist_generator
+  use logger_mod, only: g_logger
   implicit none
 
   private
@@ -105,6 +107,7 @@ module charge_mod
     procedure :: impmad
     procedure :: print_state
     procedure :: print_state_full
+    procedure :: print_state_formatted
     final :: destructor
   end type charge
   
@@ -2369,8 +2372,7 @@ contains
     endif
 
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
         write(unit,nml=charge)
     else if(present(file)) then
@@ -2423,8 +2425,7 @@ contains
     endif
 
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit)) then
         write(unit,nml=charge)
     else if(present(file)) then
@@ -2437,4 +2438,112 @@ contains
 
   end subroutine print_state
 
+    !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Print class members values in namelist format 
+  !>
+  !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+  !> @param[in] unit File unit used to write namelist
+  !> @param[in] file File name used to write namelist
+  !---------------------------------------------------------------------------
+  subroutine print_state_formatted(this,unit,file)
+    implicit none
+
+    class(charge), intent(in) :: this
+
+    integer,intent(in),optional :: unit
+    character(len=*),intent(in),optional :: file
+    integer :: newunit
+
+    real(rp) :: gx, gy, gz, gt, a, b, c, amax, bmax, alamda, rmax, gmax, ar2d , sws, vol
+    integer :: nq3, nr0, numr, numg, numvr, numvg   
+    real(rp), dimension(:), allocatable :: w, wssurf, bsx, bsy, bsz, bkx, bky, bkz, qx3, qy3, qz3, qx, qy, qz, asx, asy, asz, akx, aky, akz, dr, dg, wsimp 
+    real(rp), dimension(:,:), allocatable :: dss, dsz, ds3z2, dsx2y2, dsxy, dzz, dz3z2, am, bm, pm, amad
+
+    type(namelist_generator) :: nml
+
+    namelist /charge/ w, gx, gy, gz, gt, wssurf, dss, dsz, ds3z2, dsx2y2, &
+    dsxy, dzz, dz3z2, am, bm, pm, bsx, bsy, bsz, bkx, bky, bkz, qx3, qy3, &
+    qz3, qx, qy, qz, asx, asy, asz, akx, aky, akz, dr, dg, a, b, c, amax, &
+    bmax, alamda, rmax, gmax, ar2d, sws, vol, nq3, nr0, numr, numg, numvr,&
+    numvg, amad, wsimp 
+
+    ! scalar
+
+    nml = namelist_generator('charge')
+    
+    call nml%add('gx', this%gx)
+    call nml%add('gy', this%gy)
+    call nml%add('gz', this%gz)
+    call nml%add('gt', this%gt)
+    call nml%add('a', this%a)
+    call nml%add('b', this%b)
+    call nml%add('c', this%c)
+    call nml%add('amax', this%amax)
+    call nml%add('bmax', this%bmax)
+    call nml%add('alamda', this%alamda)
+    call nml%add('rmax', this%rmax)
+    call nml%add('gmax', this%gmax)
+    call nml%add('ar2d', this%ar2d)
+    call nml%add('sws', this%sws)
+    call nml%add('vol', this%vol)
+    call nml%add('nq3', this%nq3)
+    call nml%add('nr0', this%nr0)
+    call nml%add('numr', this%numr)
+    call nml%add('numg', this%numg)
+    call nml%add('numvr', this%numvr)
+    call nml%add('numvg', this%numvg)
+
+    ! 1d allocatable
+    ! TODO: implement test inside namelist_generator
+    if(allocated(this%w)) call nml%add('w',this%w)
+    if(allocated(this%wssurf)) call nml%add('wssurf',this%wssurf)
+    if(allocated(this%bsx)) call nml%add('bsx',this%bsx)
+    if(allocated(this%bsy)) call nml%add('bsy',this%bsy)
+    if(allocated(this%bsz)) call nml%add('bsz',this%bsz)
+    if(allocated(this%bkx)) call nml%add('bkx',this%bkx)
+    if(allocated(this%bky)) call nml%add('bky',this%bky)
+    if(allocated(this%bkz)) call nml%add('bkz',this%bkz)
+    if(allocated(this%qx3)) call nml%add('qx3',this%qx3)
+    if(allocated(this%qy3)) call nml%add('qy3',this%qy3)
+    if(allocated(this%qz3)) call nml%add('qz3',this%qz3)
+    if(allocated(this%qx)) call nml%add('qx',this%qx)
+    if(allocated(this%qy)) call nml%add('qy',this%qy)
+    if(allocated(this%qz)) call nml%add('qz',this%qz)
+    if(allocated(this%asx)) call nml%add('asx',this%asx)
+    if(allocated(this%asy)) call nml%add('asy',this%asy)
+    if(allocated(this%asz)) call nml%add('asz',this%asz)
+    if(allocated(this%akx)) call nml%add('akx',this%akx)
+    if(allocated(this%aky)) call nml%add('aky',this%aky)
+    if(allocated(this%akz)) call nml%add('akz',this%akz)
+    if(allocated(this%dr)) call nml%add('dr',this%dr)
+    if(allocated(this%dg)) call nml%add('dg',this%dg)
+    if(allocated(this%wsimp)) call nml%add('wsimp',this%wsimp)
+
+    ! 2d allocatable
+    ! TODO: implement test inside namelist_generator
+    if(allocated(this%dss)) call nml%add('dss',this%dss)
+    if(allocated(this%dsz)) call nml%add('dsz',this%dsz)
+    if(allocated(this%ds3z2)) call nml%add('ds3z2',this%ds3z2)
+    if(allocated(this%dsx2y2)) call nml%add('dsx2y2',this%dsx2y2)
+    if(allocated(this%dsxy)) call nml%add('dsxy',this%dsxy)
+    if(allocated(this%dzz)) call nml%add('dzz',this%dzz)
+    if(allocated(this%dz3z2)) call nml%add('dz3z2',this%dz3z2)
+    if(allocated(this%am)) call nml%add('am',this%am)
+    if(allocated(this%bm)) call nml%add('bm',this%bm)
+    if(allocated(this%pm)) call nml%add('pm',this%pm)
+    if(allocated(this%amad)) call nml%add('amad',this%amad)
+
+    if(present(unit) .and. present(file)) then
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+    else if(present(unit)) then
+      call nml%generate_namelist(unit=unit)
+    else if(present(file)) then
+      call nml%generate_namelist(file=file)
+    else
+      call nml%generate_namelist()
+    endif
+  end subroutine print_state_formatted
+  
 end module charge_mod

@@ -23,7 +23,9 @@
 module namelist_generator_mod
   use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
   use precision_mod, only: rp
-  use string_mod, only: sl, int2str, real2str, fmt
+  use string_mod, only: sl, int2str, real2str, fmt, freplace
+  use logger_mod, only: g_logger
+  use array_mod, only: fqsortloc
   implicit none
 
   private
@@ -88,8 +90,8 @@ module namelist_generator_mod
     type(array_integer_variable), dimension(:), allocatable :: list_of_array_integer_variables
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
   contains
-    procedure :: add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable
-    generic :: add => add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable
+    procedure :: add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable, add_tensor3_integer_variable, add_tensor3_real4_variable, add_tensor3_real8_variable
+    generic :: add => add_integer_variable, add_real4_variable, add_real8_variable, add_string_variable, add_logical_variable, add_array_integer_variable, add_array_real4_variable, add_array_real8_variable, add_matrix_integer_variable, add_matrix_real4_variable, add_matrix_real8_variable, add_tensor3_integer_variable, add_tensor3_real4_variable, add_tensor3_real8_variable
     procedure :: generate_namelist
     final :: destructor
   end type namelist_generator
@@ -296,20 +298,22 @@ contains
     type(array_integer_variable), dimension(:), allocatable :: list_of_array_integer_variables
     integer :: new_size
 
-    variable%name = name
-    allocate(variable%value(size(value)))
-    variable%value = value
+    if(size(value) > 0) then
+      variable%name = name
+      allocate(variable%value(size(value)))
+      variable%value = value
 
-    if(allocated(this%list_of_array_integer_variables)) then
-      call move_alloc(this%list_of_array_integer_variables,list_of_array_integer_variables)
-    endif
-    new_size = size(this%list_of_array_integer_variables) + 1
-    allocate(this%list_of_array_integer_variables(new_size))
+      if(allocated(this%list_of_array_integer_variables)) then
+        call move_alloc(this%list_of_array_integer_variables,list_of_array_integer_variables)
+      endif
+      new_size = size(this%list_of_array_integer_variables) + 1
+      allocate(this%list_of_array_integer_variables(new_size))
 
-    if(new_size > 1) then
-      this%list_of_array_integer_variables(:new_size-1) = list_of_array_integer_variables
+      if(new_size > 1) then
+        this%list_of_array_integer_variables(:new_size-1) = list_of_array_integer_variables
+      endif
+      this%list_of_array_integer_variables(new_size) = variable
     endif
-    this%list_of_array_integer_variables(new_size) = variable
   end subroutine add_array_integer_variable
 
   !---------------------------------------------------------------------------
@@ -326,20 +330,22 @@ contains
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
     integer :: new_size
 
-    variable%name = name
-    allocate(variable%value(size(value)))
-    variable%value = value
+    if(size(value) > 0) then
+      variable%name = name
+      allocate(variable%value(size(value)))
+      variable%value = value
 
-    if(allocated(this%list_of_array_real_variables)) then
-      call move_alloc(this%list_of_array_real_variables,list_of_array_real_variables)
-    endif
-    new_size = size(this%list_of_array_real_variables) + 1
-    allocate(this%list_of_array_real_variables(new_size))
+      if(allocated(this%list_of_array_real_variables)) then
+        call move_alloc(this%list_of_array_real_variables,list_of_array_real_variables)
+      endif
+      new_size = size(this%list_of_array_real_variables) + 1
+      allocate(this%list_of_array_real_variables(new_size))
 
-    if(new_size > 1) then
-      this%list_of_array_real_variables(:new_size-1) = list_of_array_real_variables
+      if(new_size > 1) then
+        this%list_of_array_real_variables(:new_size-1) = list_of_array_real_variables
+      endif
+      this%list_of_array_real_variables(new_size) = variable
     endif
-    this%list_of_array_real_variables(new_size) = variable
   end subroutine add_array_real4_variable
 
   !---------------------------------------------------------------------------
@@ -356,20 +362,22 @@ contains
     type(array_real_variable), dimension(:), allocatable :: list_of_array_real_variables
     integer :: new_size
 
-    variable%name = name
-    allocate(variable%value(size(value)))
-    variable%value = value
+    if(size(value) > 0) then
+      variable%name = name
+      allocate(variable%value(size(value)))
+      variable%value = value
 
-    if(allocated(this%list_of_array_real_variables)) then
-      call move_alloc(this%list_of_array_real_variables,list_of_array_real_variables)
-    endif
-    new_size = size(this%list_of_array_real_variables) + 1
-    allocate(this%list_of_array_real_variables(new_size))
+      if(allocated(this%list_of_array_real_variables)) then
+        call move_alloc(this%list_of_array_real_variables,list_of_array_real_variables)
+      endif
+      new_size = size(this%list_of_array_real_variables) + 1
+      allocate(this%list_of_array_real_variables(new_size))
 
-    if(new_size > 1) then
-      this%list_of_array_real_variables(:new_size-1) = list_of_array_real_variables
+      if(new_size > 1) then
+        this%list_of_array_real_variables(:new_size-1) = list_of_array_real_variables
+      endif
+      this%list_of_array_real_variables(new_size) = variable
     endif
-    this%list_of_array_real_variables(new_size) = variable
   end subroutine add_array_real8_variable
 
   !---------------------------------------------------------------------------
@@ -407,16 +415,45 @@ contains
   !> @brief
   !> Destructor
   !---------------------------------------------------------------------------
+  subroutine add_tensor3_integer_variable(this,name,value)
+    integer, dimension(:,:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_tensor3_*_variable.f90'
+  end subroutine add_tensor3_integer_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
+  subroutine add_tensor3_real4_variable(this,name,value)
+    real(4), dimension(:,:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_tensor3_*_variable.f90'
+  end subroutine add_tensor3_real4_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
+  subroutine add_tensor3_real8_variable(this,name,value)
+    real(8), dimension(:,:,:), intent(in) :: value
+    include 'include_codes/namelist_generator/add_tensor3_*_variable.f90'
+  end subroutine add_tensor3_real8_variable
+
+  !---------------------------------------------------------------------------
+  ! DESCRIPTION:
+  !> @brief
+  !> Destructor
+  !---------------------------------------------------------------------------
   subroutine generate_namelist(this,unit,file)
     implicit none
     class(namelist_generator), intent(in) :: this
     character(len=*), optional :: file
     integer, optional :: unit
     integer :: funit, i
-
+    
     if(present(unit) .and. present(file)) then
-      write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-      error stop
+      call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
     else if(present(unit) .or. present(file)) then
       if(present(unit)) then
         funit = unit
@@ -436,6 +473,9 @@ contains
       enddo
       do i=1, size(this%list_of_logical_variables)
         write(funit,'(" ",A)') trim(this%list_of_logical_variables(i)%to_string())
+      enddo
+      do i=1, size(this%list_of_array_integer_variables)
+        write(funit,'(" ",A)') trim(this%list_of_array_integer_variables(i)%to_string())
       enddo
       do i=1, size(this%list_of_array_real_variables)
         write(funit,'(" ",A)') trim(this%list_of_array_real_variables(i)%to_string())
@@ -457,6 +497,9 @@ contains
       do i=1, size(this%list_of_logical_variables)
         write(*,'(" ",A)') trim(this%list_of_logical_variables(i)%to_string())
       enddo
+      do i=1, size(this%list_of_array_integer_variables)
+        write(*,'(" ",A)') trim(this%list_of_array_integer_variables(i)%to_string())
+      enddo
       do i=1, size(this%list_of_array_real_variables)
         write(*,'(" ",A)') trim(this%list_of_array_real_variables(i)%to_string())
       enddo
@@ -467,28 +510,28 @@ contains
   function integer_variable_to_string(this) result(output)
     implicit none
     class(integer_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     output = trim(this%name)//' = '//trim(int2str(this%value))
   end function integer_variable_to_string
 
   function string_variable_to_string(this) result(output)
     implicit none
     class(string_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     output = trim(this%name)//" = '"//trim(this%value)//"'"
   end function string_variable_to_string
 
   function real_variable_to_string(this) result(output)
     implicit none
     class(real_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     output = trim(this%name)//' = '//trim(real2str(this%value))
   end function real_variable_to_string
 
   function logical_variable_to_string(this) result(output)
     implicit none
     class(logical_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     if(this%value) then
       output = trim(this%name)//' = .True.'
     else
@@ -499,7 +542,7 @@ contains
   function array_integer_variable_to_string(this) result(output)
     implicit none
     class(array_integer_variable),intent(in) :: this
-    character(len=sl) :: output
+    character(len=:), allocatable :: output
     integer i
     output = ''
     do i=1,size(this%value)

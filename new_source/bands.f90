@@ -31,8 +31,8 @@ module bands_mod
     use recursion_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
     use precision_mod, only:rp
-    use logger_mod, only: g_logger
     use math_mod
+    use logger_mod, only: g_logger
     use string_mod
     implicit none
    
@@ -190,7 +190,6 @@ module bands_mod
         do i=1,this%en%channels_ldos+10
           do j=1,9
             this%dtot(i) = this%dtot(i) - aimag(this%green%g0(i,j,j,ia)+this%green%g0(i,j+9,j+9,ia))/pi
-            this%dtotcheb(i) = this%dtotcheb(i) + (this%dos%doscheb(ia,j,i)+this%dos%doscheb(ia,j+9,i))
           end do
           write(125,'(2f10.5)') this%en%ene(i), this%dtot(i)
         end do
@@ -206,22 +205,22 @@ module bands_mod
         call this%fermi(this%en%fermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtot,ifail,this%qqv,e1_mag)
         this%nv1 = ik1
         this%e1 = e1_mag
-        call g_logger%info('Fermi energy: '//real2str(this%en%fermi),__FILE__,__LINE__)
+        call g_logger%info('Fermi energy:'//real2str(this%en%fermi),__FILE__,__LINE__)
         !For Chebyshev DOS
-        ef_mag = this%en%fermi
-        e1_mag = ef_mag
-        call this%fermi(ef_mag,this%en%edel,ik1_mag,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
-        e1 = this%en%chebfermi
-        call this%fermi(this%en%chebfermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
-        this%nv1cheb = ik1
-        this%e1cheb = e1_mag
+        !ef_mag = this%en%fermi
+        !e1_mag = ef_mag
+        !call this%fermi(ef_mag,this%en%edel,ik1_mag,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
+        !e1 = this%en%chebfermi
+        !call this%fermi(this%en%chebfermi,this%en%edel,ik1,this%en%energy_min,this%en%channels_ldos+10,this%dtotcheb,ifail,this%qqv,e1_mag)
+        !this%nv1cheb = ik1
+        !this%e1cheb = e1_mag
       else if(this%control%calctype=='B'.and.(this%en%fix_fermi))then
         ik1 = nint((this%en%fermi-this%en%energy_min)/this%en%edel)
         e1 = this%en%energy_min+(ik1-1)*this%en%edel
         this%nv1 = ik1
         this%e1 = e1      
-        this%nv1cheb = ik1
-        this%e1cheb = e1
+        !this%nv1cheb = ik1
+        !this%e1cheb = e1
       end if
     end subroutine calculate_fermi
 
@@ -448,7 +447,7 @@ module bands_mod
 
         this%symbolic_atom(na)%potential%mtot = sqrt((this%symbolic_atom(na)%potential%mx**2) +&
                                                      (this%symbolic_atom(na)%potential%my**2) +&
-                                                     (this%symbolic_atom(na)%potential%mz**2))
+                                                     (this%symbolic_atom(na)%potential%mz**2)) + 1.0d-15
  
         this%symbolic_atom(na)%potential%mom(1) = this%symbolic_atom(na)%potential%mx/this%symbolic_atom(na)%potential%mtot
         this%symbolic_atom(na)%potential%mom(2) = this%symbolic_atom(na)%potential%my/this%symbolic_atom(na)%potential%mtot

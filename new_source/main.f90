@@ -11,7 +11,6 @@ program main
   type(calculation) :: calculation_obj
   type(argument_parser) :: args
   integer :: nomp
-  real(rp) :: start, finish
 #ifdef OMP
   ! External functions
   integer, external :: omp_get_num_threads
@@ -35,11 +34,11 @@ program main
 
   ! Run
   call g_timer%start('Calculation')
-  call cpu_time(start)
+  !call cpu_time(start)
   call calculation_obj%process
-  call cpu_time(finish)
+  !call cpu_time(finish)
   call g_timer%stop('Calculation')
-  print '("Total calculatio time = ",f10.3," seconds.")',(finish-start)!/32
+  !print '("Total calculatio time = ",f10.3," seconds.")',(finish-start)!/32
 
   call g_timer%print_report()
 end program main

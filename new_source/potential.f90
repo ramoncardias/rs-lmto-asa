@@ -25,6 +25,7 @@ module potential_mod
     use globals_mod, only: GLOBAL_DATABASE_FOLDER, GLOBAL_CHAR_SIZE
     use string_mod, only: path_join, sl
     use logger_mod, only: g_logger
+    use namelist_generator_mod, only: namelist_generator
     implicit none
 
     private
@@ -84,6 +85,7 @@ module potential_mod
         procedure :: restore_to_default
         procedure :: print_state
         procedure :: print_state_full
+        procedure :: print_state_formatted
         final :: destructor
     end type potential
 
@@ -379,8 +381,7 @@ contains
         vl = this%vl
        
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             write(unit,nml=par)
         else if(present(file)) then
@@ -464,8 +465,7 @@ contains
         obx = this%obx
 
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             write(unit,nml=par)
         else if(present(file)) then
@@ -478,6 +478,60 @@ contains
 
     end subroutine print_state_full
 
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> Print class members values in namelist format 
+    !>
+    !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+    !> @param[in] unit File unit used to write namelist
+    !> @param[in] file File name used to write namelist
+    !---------------------------------------------------------------------------
+    subroutine print_state_formatted(this,unit,file)
+        implicit none
+        class(potential), intent(in) :: this
+
+        integer,intent(in),optional :: unit
+        character(len=*),intent(in),optional :: file
+        integer :: newunit
+        
+        type(namelist_generator) :: nml
+            
+        nml = namelist_generator('par')
+        
+        call nml%add('center_band', this%center_band)
+        call nml%add('width_band', this%width_band)
+        call nml%add('gravity_center', this%gravity_center)
+        call nml%add('sumec', this%sumec)
+        call nml%add('sumev', this%sumev)
+        call nml%add('etot', this%etot)
+        call nml%add('utot', this%utot)
+        call nml%add('ekin', this%ekin)
+        call nml%add('rhoeps', this%rhoeps)
+        call nml%add('c', this%c)
+        call nml%add('enu', this%enu)
+        call nml%add('ppar', this%ppar)
+        call nml%add('qpar', this%qpar)
+        call nml%add('srdel', this%srdel)
+        call nml%add('vl', this%vl)
+        call nml%add('pl', this%pl)
+        call nml%add('mom', this%mom)
+        call nml%add('ws_r', this%ws_r)
+        call nml%add('ql', this%ql)
+        call nml%add('lmax', this%lmax)
+        call nml%add('vmad', this%vmad)
+        
+        if(present(unit) .and. present(file)) then
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+          else if(present(unit)) then
+            call nml%generate_namelist(unit=unit)
+          else if(present(file)) then
+            call nml%generate_namelist(file=file)
+          else
+            call nml%generate_namelist()
+          endif
+    end subroutine print_state_formatted
+    
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
     !> @brief Build an array of potentials

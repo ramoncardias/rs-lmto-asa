@@ -644,7 +644,7 @@ contains
         case('lanczos')
           call this%recursion%recur()  
         case('chebyshev')
-          call g_logger%fatal('Chebvshev recursion not implemented!',__FILE__,__LINE__)
+          call this%recursion%chebyshev_recur()
       end select
       call g_timer%stop('Calculation.self consistency.recursion')
       !=========================================================================
@@ -659,13 +659,14 @@ contains
       !=========================================================================
       !      CALCULATE THE DENSITY OF STATES AND THE NEW MOMENT BANDS QL
       !=========================================================================
+      call g_logger%info('Calculating the density of states and the new moment bands',__FILE__,__LINE__)
       call g_timer%start('Calculation.self consistency.calculation of DOS')
       call this%en%e_mesh() ! Solve the energy mesh
       select case(this%control%recur)
         case('lanczos')
           call this%green%sgreen() ! Calculate the density of states using the continued fraction 
         case('chebyshev')
-          call g_logger%fatal('Chebvshev recursion not implemented!',__FILE__,__LINE__)
+          call this%green%chebyshev_green()
       end select
       call this%bands%calculate_fermi() ! Calculate the fermi energy
       call this%bands%calculate_moments() ! Integrate the DOS and calculate the band momends QL
@@ -796,7 +797,7 @@ contains
 
   subroutine atomsc(this,atom,v,rofi,job)
     class(self), intent(inout) :: this
-    type(symbolic_atom), intent(inout) :: atom
+    class(symbolic_atom), intent(inout) :: atom
     type(xc) :: xc_obj
     real(rp), dimension(:,:), allocatable, intent(out) :: v
     real(rp), dimension(:), allocatable, intent(out) :: rofi
@@ -858,43 +859,43 @@ contains
         qval(isp) = qval(isp) + atom%potential%ql(1,l,isp)
       end do
     end do
-!    !----MODIFICATIONS TO INCLUDE FRACTIONARY F OCCUPATION IN THE CORE------
-!    IFCORE = this%FTYPE()
-!    DFCORE = REAL(IFCORE)
-!    ! write (9,10000) IFCORE, DFCORE
-!    write (9,*) 'F-core check:',IFCORE, DFCORE
-!    if (IFCORE /= 0) then
-!       LCORE = 3
-!      DEG = (2*(2*LCORE+1)) / NSP
-!       do ISP = 1,NSP
-!          !------DEFINES DEGENERACY OF UP AND DW F-CORE--------------
-!          !------MAKES DEG=2*DEG se NAO MAGNETICO!!!-----------------
-!          if (NSP == 1) then
-!             DEG = DFCORE
-!          elseif (IFCORE <= 7) then
-!             if (ISP == 1) then
-!                DEG = DFCORE
-!             end if
-!             if (ISP == 2) then
-!                DEG = 0.0d0
-!             end if
-!          else
-!             if (ISP == 1) then
-!                DEG = 7.0d0
-!             end if
-!             if (ISP == 2) then
-!                DEG = DFCORE - 7.0d0
-!             end if
-!          end if
-!          !-----END OF DEG DEFINITION-------------------------------
-!          KONFIG = 5
-!          do KONF = LCORE+1,KONFIG-1
-!             NCORE = NCORE + 1
-!             EC(NCORE) = -5.d0
-!             atom%QC = atom%QC + DEG
-!          end do
-!       end do
-!    end if
+    !----MODIFICATIONS TO INCLUDE FRACTIONARY F OCCUPATION IN THE CORE------
+    IFCORE = atom%element%f_core
+    DFCORE = REAL(IFCORE)
+    call g_logger%info('F core chek:'//int2str(ifcore)//' '//real2str(dfcore),__FILE__,__LINE__)
+    if (IFCORE /= 0) then
+       LCORE = 3
+      DEG = (2*(2*LCORE+1)) / NSP
+       do ISP = 1,NSP
+          !------DEFINES DEGENERACY OF UP AND DW F-CORE--------------
+          !------MAKES DEG=2*DEG se NAO MAGNETICO!!!-----------------
+          if (NSP == 1) then
+             DEG = DFCORE
+          elseif (IFCORE <= 7) then
+             if (ISP == 1) then
+                DEG = DFCORE
+             end if
+             if (ISP == 2) then
+                DEG = 0.0d0
+             end if
+          else
+             if (ISP == 1) then
+                DEG = 7.0d0
+             end if
+             if (ISP == 2) then
+                DEG = DFCORE - 7.0d0
+             end if
+          end if
+          !-----END OF DEG DEFINITION-------------------------------
+          KONFIG = 5
+          do KONF = LCORE+1,KONFIG-1
+             NCORE = NCORE + 1
+             EC(NCORE) = -5.d0
+             atom%QC = atom%QC + DEG
+
+          end do
+       end do
+    end if
     !-----------------------END OF MODIFICATIONS----------------------------
     atom%qv = atom%element%atomic_number - atom%qc + .001
     if (NCORE > NCMX) stop "*** CHANGE NCMX IN ATOMSC"
@@ -929,7 +930,7 @@ contains
        write (6,10005)
     end if
     if (JOB == "POT") then
-       call this%newrho(atom%element%atomic_number,lmax,atom%a,b,nr,rofi,v,rho_in,atom%potential%pl,atom%potential%ql,SEC,SEV,EC,EV,TOLRSQ,NSP,0)
+       call this%newrho(atom,atom%element%atomic_number,lmax,atom%a,b,nr,rofi,v,rho_in,atom%potential%pl,atom%potential%ql,SEC,SEV,EC,EV,TOLRSQ,NSP,0)
     elseif (JOB /= "RHO") then
        stop "*** ATOMSC EXPECTS JOB=RHO OR JOB=POT"
     end if
@@ -955,7 +956,7 @@ contains
        VNUCL = V(1,1)
        !call VXC0SP_old(atom%element%atomic_number,atom%a,B,rofi,rho_in,NR,V,RHO0,REPS,RMU,NSP)
        call this%VXC0SP(xc_obj,atom%element%atomic_number,atom%a,b,rofi,rho_in,NR,V,RHO0,REPS,RMU,NSP,B_fsm)
-       call this%NEWRHO(atom%element%atomic_number,lmax,atom%a,b,nr,rofi,v,rho,atom%potential%PL,atom%potential%QL,SEC,SEV,EC,EV,TL,NSP,IPR1)
+       call this%NEWRHO(atom,atom%element%atomic_number,lmax,atom%a,b,nr,rofi,v,rho,atom%potential%PL,atom%potential%QL,SEC,SEV,EC,EV,TL,NSP,IPR1)
        DRHO = 0.d0
        SUM = 0.d0
        RHO0T = 0.d0
@@ -1063,7 +1064,7 @@ contains
   end function FTYPE
 
 
-  subroutine NEWRHO(this, Z,LMAX,A,B,NR,rofi,V,RHO,PL,QL,SUMEC,SUMEV,EC,EV,TOL,NSP,IPR)
+  subroutine NEWRHO(this,atom, Z,LMAX,A,B,NR,rofi,V,RHO,PL,QL,SUMEC,SUMEV,EC,EV,TOL,NSP,IPR)
     !  MAKES SPHERICAL CHARGE DENSITY FOR A GIVEN POTENTIAL.                
     !  RHO IS DETERMINED BY BOUNDARY CONDITIONS PL AND MOMENTS QL.          
     !  FOR RMAX GE 10 SETS PHIDOT PHIDOTDOT TO ZERO                         
@@ -1082,6 +1083,7 @@ contains
     ! 
     !.. Formal Arguments .. 
     class(self), intent(inout) :: this
+    class(symbolic_atom), intent(inout) :: atom
     integer, intent(in) :: IPR,LMAX,NR,NSP
     real(rp), intent(in) :: A,B,TOL,Z
     real(rp), dimension(*), intent(inout) :: EC,EV
@@ -1131,17 +1133,17 @@ contains
       KONF(L+1) = PL(L+1,1)
     end do
     !======MODIFICADO PARA INCLUIR F NO CAROCO================              
-    !IFCORE = this%FTYPE()
-    !if (IFCORE /= 0) then
-    !  KONF(LMAX+1) = 5
-    !end if
+    IFCORE = atom%element%f_core
+    if (IFCORE /= 0) then
+      KONF(LMAX+2) = 5
+    end if
     !========FIM  DAS MODIFICACOES NESTE TRECHO================             
     do ISP = 1,NSP
       do IR = 1,NR
           RHO(IR,ISP) = 0.d0
       end do
     end do
-    call this%RHOCOR(Z,LMAX,KONF,A,B,NR,rofi,V,RHO,G,SUMEC,EC,TOL,NSP,IPR)
+    call this%RHOCOR(atom,Z,LMAX,KONF,A,B,NR,rofi,V,RHO,G,SUMEC,EC,TOL,NSP,IPR)
     ! ------ LOOP OVER VALENCE STATES -------                               
     IVAL = 0
     do ISP = 1,NSP
@@ -1210,7 +1212,7 @@ contains
     10000 format (" ** PHP,PHPP SET TO ZERO,  L,NN,NRE,E,RHO=",3i5,2f8.4)
   end subroutine NEWRHO
 
-  subroutine RHOCOR(this,Z,LMAX,KONFIG,A,B,NR,rofi,V,RHO,G,SUMEC,EC,TOL,NSP,IPR)
+  subroutine RHOCOR(this,atom,Z,LMAX,KONFIG,A,B,NR,rofi,V,RHO,G,SUMEC,EC,TOL,NSP,IPR)
     !  ADDS THE (SPHERICAL) CHARGE DENSITY OF THE CORE STATES               
     !  SCALAR RELATIVISTIC VERSION                                          
     ! 
@@ -1218,7 +1220,8 @@ contains
     implicit none
     ! 
     !.. Formal Arguments .. 
-    class(self), intent(in) :: this
+    class(self), intent(inout) :: this
+    class(symbolic_atom), intent(inout) :: atom
     integer, intent(in) :: IPR,LMAX,NR,NSP
     real(rp), intent(in) :: A,B,TOL,Z
     integer, dimension(*), intent(in) :: KONFIG
@@ -1301,71 +1304,71 @@ contains
           end do
       end do
       !====MODIFICADO PARA INCLUIR F FRACIONARIO NO CAROCO==========          
-      !IFCORE = this%FTYPE()
-      !DFCORE = REAL(IFCORE)
-      !if (IFCORE /= 0) then
-      !    LP1 = LMAX + 1
-      !    L = LP1
-      !    !     DEG=(2*(2*L+1))/NSP
-      !    !=======DEFINE DEGENERESCENCIA DEG PARA SPINS UP E DW DO F-CORE=====    
-      !    !------------MAKES DEG=2*DEG se nao magnetico!!!----------------
-      !    if (NSP == 1) then
-      !      DEG = DFCORE
-      !    elseif (IFCORE <= 7) then
-      !      if (ISP == 1) then
-      !          DEG = DFCORE
-      !      end if
-      !      if (ISP == 2) then
-      !          DEG = 0.0d0
-      !      end if
-      !    else
-      !      if (ISP == 1) then
-      !          DEG = 7.0d0
-      !      end if
-      !      if (ISP == 2) then
-      !          DEG = DFCORE - 7.0d0
-      !      end if
-      !    end if
-      !    !==============FIM DA DEFINICAO DE DEG ===================              
-      !    do KONF = LP1,KONFIG(LP1)-1
-      !      ICORE = ICORE + 1
-      !      NODES = KONF - LP1
-      !      ECOR0 = EC(ICORE)
-      !      VAL = 1.d-30
-      !      SLO = -VAL
-      !      call RSEQSR(E1,E2,ECOR0,TOL,Z,L,NODES,VAL,SLO,V(1,ISP),G,SUM,A,B,rofi, &
-      !          NR,NRE,0)
-      !      ECORE = ECOR0
-      !      YYY = ECOR0 - V(NR,ISP) + 2*Z/RMAX
-      !      if (NRE==NR .and. YYY<0.d0) then
-      !          DLML = -1.d0 - SQRT(-YYY)*RMAX
-      !          do LL = 1,L
-      !            DLML = -YYY*RMAX*RMAX/DLML - (2*LL+1)
-      !          end do
-      !          SLO = VAL * (DLML+L+1) / RMAX
-      !          call RSEQSR(E1,E2,ECORE,TOL,Z,L,NODES,VAL,SLO,V(1,ISP),G,SUM,A,B, &
-      !            rofi,NR,NRE,0)
-      !      end if
-      !      EC(ICORE) = ECORE
-      !      FLLP1 = L * (L+1)
-      !      do IR = 2,NRE
-      !          R = rofi(IR)
-      !          TMC = C - (V(IR,ISP)-2.d0*Z/R-ECORE)/C
-      !          GFAC = 1.d0 + FLLP1/(TMC*R)**2
-      !          RHO(IR,ISP) = RHO(IR,ISP) + DEG*(GFAC*G(IR,1)**2+G(IR,2)**2)
-      !      end do
-      !      RORIM = 0.d0
-      !      if (NRE == NR) then
-      !          RORIM = DEG * (GFAC*G(NR,1)**2+G(NR,2)**2) / RMAX**2
-      !      end if
-      !      RHORIM = RHORIM + RORIM
-      !      QCORE = QCORE + DEG
-      !      SUMEC(ISP) = SUMEC(ISP) + DEG*ECORE
-      !      if (IPR > 0) then
-      !          write (6,10001) KONF, L, NODES, ECOR0, ECORE, NRE, RORIM
-      !      end if
-      !    end do
-      !end if
+      IFCORE = atom%element%f_core
+      DFCORE = REAL(IFCORE)
+      if (IFCORE /= 0) then
+          LP1 = LMAX + 2
+          L = LP1 - 1
+          !     DEG=(2*(2*L+1))/NSP
+          !=======DEFINE DEGENERESCENCIA DEG PARA SPINS UP E DW DO F-CORE=====    
+          !------------MAKES DEG=2*DEG se nao magnetico!!!----------------
+          if (NSP == 1) then
+            DEG = DFCORE
+          elseif (IFCORE <= 7) then
+            if (ISP == 1) then
+                DEG = DFCORE
+            end if
+            if (ISP == 2) then
+                DEG = 0.0d0
+            end if
+          else
+            if (ISP == 1) then
+                DEG = 7.0d0
+            end if
+            if (ISP == 2) then
+                DEG = DFCORE - 7.0d0
+            end if
+          end if
+          !==============FIM DA DEFINICAO DE DEG ===================              
+          do KONF = LP1,KONFIG(LP1)-1
+            ICORE = ICORE + 1
+            NODES = KONF - LP1
+            ECOR0 = EC(ICORE)
+            VAL = 1.d-30
+            SLO = -VAL
+            call RSEQSR(E1,E2,ECOR0,TOL,Z,L,NODES,VAL,SLO,V(1,ISP),G,SUM,A,B,rofi, &
+                NR,NRE,0)
+            ECORE = ECOR0
+            YYY = ECOR0 - V(NR,ISP) + 2*Z/RMAX
+            if (NRE==NR .and. YYY<0.d0) then
+                DLML = -1.d0 - SQRT(-YYY)*RMAX
+                do LL = 1,L
+                  DLML = -YYY*RMAX*RMAX/DLML - (2*LL+1)
+                end do
+                SLO = VAL * (DLML+L+1) / RMAX
+                call RSEQSR(E1,E2,ECORE,TOL,Z,L,NODES,VAL,SLO,V(1,ISP),G,SUM,A,B, &
+                  rofi,NR,NRE,0)
+            end if
+            EC(ICORE) = ECORE
+            FLLP1 = L * (L+1)
+            do IR = 2,NRE
+                R = rofi(IR)
+                TMC = C - (V(IR,ISP)-2.d0*Z/R-ECORE)/C
+                GFAC = 1.d0 + FLLP1/(TMC*R)**2
+                RHO(IR,ISP) = RHO(IR,ISP) + DEG*(GFAC*G(IR,1)**2+G(IR,2)**2)
+            end do
+            RORIM = 0.d0
+            if (NRE == NR) then
+                RORIM = DEG * (GFAC*G(NR,1)**2+G(NR,2)**2) / RMAX**2
+            end if
+            RHORIM = RHORIM + RORIM
+            QCORE = QCORE + DEG
+            SUMEC(ISP) = SUMEC(ISP) + DEG*ECORE
+            if (IPR > 0) then
+                write (6,10001) KONF, L, NODES, ECOR0, ECORE, NRE, RORIM
+            end if
+          end do
+      end if
       !====== FIM DAS MODIFICACOES NESTE TRECHO ============================  
       if (IPR > 0) then
           write (6,10002) QCORE, RHORIM, SUMEC(ISP)
@@ -1517,9 +1520,9 @@ contains
        G(K,1) = 0.d0
        G(K,2) = 0.d0
     end do
-    !if (IPR>=1 .or. NIT>=NITMAX) then
-       write (123,10003) E, Q, NR, NRE, KC, DE, NIT
-    !end if
+    if (IPR>=1 .or. NIT>=NITMAX) then
+       write (6,10003) E, Q, NR, NRE, KC, DE, NIT
+    end if
     return
     ! 
     ! ... Format Declarations ...

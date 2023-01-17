@@ -28,6 +28,8 @@ module recursion_mod
     use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
     use precision_mod, only: rp
     use math_mod
+    use string_mod
+    use logger_mod, only: g_logger 
     implicit none
    
     private
@@ -153,10 +155,7 @@ module recursion_mod
         this%izeroll(:,:) = 0
         this%izeroll(j,1) = 1
 
-        call cpu_time(start)
         call this%create_ll_map()
-        call cpu_time(finish)
-        print '("Mapping neighrbours time = ",f10.3," seconds.")',(finish-start)!/32
 
         ! Initializing wave functions
         this%psi0(:,:,:) = (0.0d0,0.0d0)
@@ -180,7 +179,7 @@ module recursion_mod
           nr = this%lattice%nn(k,1)
           if (this%izeroll(k,1)/=0) then
             call zgemm('n','n',18,18,18,cone,hcheb(1,1,1,ih),18,this%psi0(:,:,k),18,cone,this%psi1(:,:,k),18)
-            call zgemm('n','n',18,18,18,cone,this%hamiltonian%lsham(:,:,ih),18,this%psi0(:,:,k),18,cone,this%psi1(:,:,k),18)
+            !call zgemm('n','n',18,18,18,cone,this%hamiltonian%lsham(:,:,ih),18,this%psi0(:,:,k),18,cone,this%psi1(:,:,k),18)
           end if
           if(nr>=2)then
             do nb = 2,nr ! Loop in the neighbouring
@@ -206,7 +205,6 @@ module recursion_mod
 
         ! Start the recursion
         do ll=1,this%lattice%control%lld
-          write(180,*) 'll=', ll
           ! Write H*|phi_1>
           do k = nlimplus1, this%lattice%kk ! Loop in the clust
             idumll(k) = this%izeroll(k,ll+1)
@@ -214,7 +212,7 @@ module recursion_mod
             nr = this%lattice%nn(k,1)
             if (this%izeroll(k,ll+1)/=0) then
               call zgemm('n','n',18,18,18,cone,hcheb(1,1,1,ih),18,this%psi1(:,:,k),18,cone,this%psi2(:,:,k),18)
-              call zgemm('n','n',18,18,18,cone,this%hamiltonian%lsham(:,:,ih),18,this%psi1(:,:,k),18,cone,this%psi2(:,:,k),18)
+              !call zgemm('n','n',18,18,18,cone,this%hamiltonian%lsham(:,:,ih),18,this%psi1(:,:,k),18,cone,this%psi2(:,:,k),18)
             end if
             if(nr>=2)then
               do nb = 2,nr ! Loop in the neighbouring
@@ -249,6 +247,10 @@ module recursion_mod
           this%psi0(:,:,:) = this%psi1(:,:,:)
           this%psi1(:,:,:) = this%psi2(:,:,:)
           this%psi2(:,:,:) = (0.0d0,0.0d0)
+
+          if(sum(this%mu_n(i,2*ll+2,1:18,1:18))>100.d0)then
+            call g_logger%fatal('Chebyshev moments did not converge. Check energy limits energy_min and energy_max',__FILE__,__LINE__)
+          end if
         end do ! End loop in the recursion steps 
       end do ! End loop on the number of atoms to be treat self-consistently
 

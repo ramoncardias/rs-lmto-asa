@@ -25,7 +25,8 @@ module element_mod
     use globals_mod, only: GLOBAL_DATABASE_FOLDER, GLOBAL_CHAR_SIZE
     use string_mod, only: path_join, sl
     use logger_mod, only: g_logger
-    implicit none
+    use namelist_generator_mod, only: namelist_generator
+  implicit none
 
     private
 
@@ -42,6 +43,7 @@ module element_mod
         procedure :: restore_to_default
         procedure :: print_state
         procedure :: print_state_full
+        procedure :: print_state_formatted
         final :: destructor
     end type element
 
@@ -203,8 +205,7 @@ contains
         num_quant_d = this%num_quant_d
 
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             write(unit,nml=element)
         else if(present(file)) then
@@ -214,7 +215,6 @@ contains
         else
             write(*,nml=element)
         endif
-
     end subroutine print_state
     
     !---------------------------------------------------------------------------
@@ -249,8 +249,7 @@ contains
         num_quant_d = this%num_quant_d
 
         if(present(unit) .and. present(file)) then
-            write(error_unit,'("[",A,":",I0,"]: Argument error: both unit and file are present")') __FILE__,__LINE__
-            error stop
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
         else if(present(unit)) then
             write(unit,nml=element)
         else if(present(file)) then
@@ -260,8 +259,51 @@ contains
         else
             write(*,nml=element)
         endif
-
     end subroutine print_state_full
+
+    !---------------------------------------------------------------------------
+    ! DESCRIPTION:
+    !> @brief
+    !> Print class members values in namelist format 
+    !>
+    !> Print class members values in namelist format. Either unit or file should be provided. If none of them are provided, then the program will write to standart output.
+    !> @param[in] unit File unit used to write namelist
+    !> @param[in] file File name used to write namelist
+    !---------------------------------------------------------------------------
+    subroutine print_state_formatted(this,unit,file)
+        class(element), intent(in) :: this
+
+        integer,intent(in),optional :: unit
+        character(len=*),intent(in),optional :: file
+        integer :: newunit
+
+        character(len=10) :: symbol
+        integer :: f_core, num_quant_s, num_quant_p, num_quant_d
+        real(rp) :: atomic_number, core, valence
+
+        type(namelist_generator) :: nml
+
+        nml = namelist_generator('element')
+        
+        call nml%add('symbol', this%symbol)
+        call nml%add('atomic_number', this%atomic_number)
+        call nml%add('core', this%core)
+        call nml%add('valence', this%valence)
+        call nml%add('f_core', this%f_core)
+        call nml%add('num_quant_s', this%num_quant_s)
+        call nml%add('num_quant_p', this%num_quant_p)
+        call nml%add('num_quant_d', this%num_quant_d)
+
+        if(present(unit) .and. present(file)) then
+            call g_logger%fatal('Argument error: both unit and file are present',__FILE__,__LINE__)
+          else if(present(unit)) then
+            call nml%generate_namelist(unit=unit)
+          else if(present(file)) then
+            call nml%generate_namelist(file=file)
+          else
+            call nml%generate_namelist()
+          endif
+    end subroutine print_state_formatted
 
     !---------------------------------------------------------------------------
     ! DESCRIPTION:
